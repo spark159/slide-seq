@@ -65,7 +65,14 @@ def load_files(filenames, ref_length, dyad_axis, dyad_offset, key_choice='mapped
             if line.strip():
                 read_id, type, mapped_id, cutloc, seq = line.strip().split()
                 if type not in choice:
-                    continue            
+                    continue
+
+                # for mmlib/IDlib case
+                loc, type, nts = mapped_id.split('-')
+                if type=='I':
+                    continue
+                mapped_id = nts + '-' + loc
+
                 cols=cutloc.split(':')
                 if int(cols[1]) < 0 or int(cols[1]) >= ref_length:
                     continue

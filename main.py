@@ -631,13 +631,13 @@ def display_graph (filenames1,
     #graph_edit.plot_map(key_slider2, sample_list, norm_choice=False, obs_func = Slider.eqm_flux, draw = False, slicing=0, note='After')
     #graph_edit.plot_map(key_sub, sample_list, norm_choice=False, obs_func = Slider.get_dyadmap, draw ='polyA', slicing=0, note='Sub')
 
-    graph.plot_map(key_slider, sample_list, norm_choice=True, note='', draw_key=False, draw_vert=False)
+    graph.plot_map(key_slider, sample_list, norm_choice=True, note='D', draw_key=True, draw_vert=False)
     #graph.plot_map(key_slider_r, sample_list, norm_choice=True, note='norm_raw', draw_key=True, draw_vert=False)
     #graph.plot_map(key_slider1, sample_list, norm_choice=True, note='_before', draw_key=True, draw_vert=False)
     #graph.plot_map(key_slider2, sample_list, norm_choice=True, note='_After', draw_key=True, draw_vert=False)
     
     # plot average cut/dyad signal
-    graph.plot_signal(key_slider, sample_list, note='')
+    graph.plot_signal(key_slider, sample_list, note='D')
     #graph.plot_signal(key_slider, sample_list, show_key=True)
     #graph.plot_signal(key_slider, note='test')
     #graph.plot_signal(key_slider_r, note='all_raw')
