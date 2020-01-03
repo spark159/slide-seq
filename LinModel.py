@@ -415,6 +415,7 @@ class SeqLinearModel:
         self.rsquare = None
         self.corr = None
         self.freq = None
+        self.sym = None
 
     def _even_sampling(self, sym=True, shape=False):
         if not shape:
@@ -985,6 +986,7 @@ class SeqLinearModel:
                sym=True,
                graph=False):
 
+        self.sym = sym
         self.MM_orders, self.Kmer_k_b, = MM_orders, Kmer_k_b
         self.PolyA_b, self.GC_b, self.Harmonic = PolyA_b, GC_b, Harmonic
         score_list, seq_list, pos_list = self.score_list, self.seq_list, self.pos_list
@@ -1239,6 +1241,90 @@ class SeqLinearModel:
         print >> sys.stderr, "Done"
         #print self.coeff
         return None
+
+    def score_predict(self, seq):
+        assert len(seq) == self.NCPlen
+        seq_list = [seq]
+        pos_list = []
+
+        #for i in range(self.NCPlen/2+bound, len(seq)-self.NCPlen/2-bound):
+        #for i in range(self.NCPlen/2+bound, self.templatelen-self.NCPlen/2-bound):
+        #    NCPseq = seq[i-self.NCPlen/2:i+self.NCPlen/2+1]
+        #    seq_list.append(NCPseq)
+        #    pos_list.append(i)
+        
+        data_dict = self.coeff
+        MM_orders = []
+        Kmer_k_b = []
+        PolyA_b = []
+        GC_b = []
+        Harmonic = None
+        dPolyA = []
+        for key in data_dict:
+            if key.startswith('MM'):
+                MM_orders.append(int(key[2:]))
+            if key.startswith('Kmer'):
+                knum = len(data_dict[key].keys()[0])
+                Kmer_k_b.append(int(key[4:]))
+            if key.startswith('PolyA'):
+                PolyA_b.append(int(key[5:]))
+            if key.startswith('GC'):
+                GC_b.append(int(key[2:]))
+            if key.startswith('Harmonic'):
+                Harmonic = True
+            if key.startswith('dPolyA'):
+                lmin = min(data_dict['dPolyA'].keys())
+                lmax = max(data_dict['dPolyA'].keys())
+                dPolyA = [lmin, lmax]
+        if MM_orders:
+            MM_orders = sorted(MM_orders)
+        if Kmer_k_b:
+            bnum = max(Kmer_k_b) + 1
+            Kmer_k_b = ([knum, bnum])
+        if PolyA_b:
+            PolyA_b = max(PolyA_b) + 1
+        if GC_b:
+            GC_b = max(GC_b) + 1
+
+        if MM_orders:
+            MM_vars = [ [] for i in range(len(seq_list)) ] 
+            for order in sorted(MM_orders):
+                temp = self._var_Markov(seq_list, order, sym=self.sym)
+                for i in range(len(temp)):
+                    MM_vars[i] += temp[i]
+        if Kmer_k_b:
+            knum, bnum = Kmer_k_b
+            Kmer_vars = self._var_Kmer(seq_list, knum, bnum, sym=self.sym)
+        if PolyA_b:
+            PolyA_vars = self._var_PolyA(seq_list, PolyA_b, sym=self.sym)
+        if GC_b:
+            GC_vars = self._var_GC(seq_list, GC_b, sym=self.sym)
+        if Harmonic:
+            Harmonic_vars = self._var_Harmonic(pos_list)
+        if dPolyA:
+            lmin, lmax = dPolyA
+            dPolyA_vars = self._var_dPolyA(seq_list, lmin=lmin, lmax=lmax)
+
+        var_list = [ [] for i in range(len(seq_list))]
+        for i in range(len(seq_list)):
+            if MM_orders:
+                var_list[i] += MM_vars[i]
+            if Kmer_k_b:
+                var_list[i] += Kmer_vars[i]
+            if PolyA_b:
+                var_list[i] += PolyA_vars[i]
+            if GC_b:
+                var_list[i] += GC_vars[i]
+            if Harmonic:
+                var_list[i] += Harmonic_vars[i]
+            if dPolyA:
+                var_list[i] += dPolyA_vars[i]
+
+        Ypred = self.reg.predict(var_list)
+        Ypred = [ value[0] for value in Ypred]
+        #pred_prob = [np.exp(-value) for value in Ypred]
+        #pred_prob = norm(pred_prob)
+        return Ypred[0]
 
     def predict(self, target_seq, bound=0, sym=True):
         seq_list = []

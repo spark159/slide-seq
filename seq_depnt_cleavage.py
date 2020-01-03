@@ -60,8 +60,10 @@ def all_path(N, states, arrange=True):
 # Nucleosomal DNA length
 NCPlen = 147
 
-# k-mer length
+# k-mer length and kmers
 k = 3
+
+# offset length
 offset = 52
 
 # read slider data
@@ -91,18 +93,16 @@ for key in keys:
         if kmer not in kmer_back_top:
             kmer_back_top[kmer] = 0
         kmer_back_top[kmer] += 1
-        if count1 > 0 and kmer not in kmer_count1_top:
+        if kmer not in kmer_count1_top:
             kmer_count1_top[kmer] = 0
             kmer_ncount1_top[kmer] = 0
-        if count2 > 0 and kmer not in kmer_count2_top:
+        kmer_count1_top[kmer] += float(count1)
+        kmer_ncount1_top[kmer] += float(count1) / sum(top_cutmap1)
+        if kmer not in kmer_count2_top:
             kmer_count2_top[kmer] = 0
             kmer_ncount2_top[kmer] = 0
-        if count1 > 0:
-            kmer_count1_top[kmer] += float(count1)
-            kmer_ncount1_top[kmer] += float(count1) / sum(top_cutmap1)
-        if count2 > 0:
-            kmer_count2_top[kmer] += float(count2)
-            kmer_ncount2_top[kmer] += float(count2) / sum(top_cutmap2)
+        kmer_count2_top[kmer] += float(count2)
+        kmer_ncount2_top[kmer] += float(count2) / sum(top_cutmap2)
     
     for i in range(NCPlen/2, len(bott_cutmap1)-NCPlen/2):
         count1, count2 = bott_cutmap1[i], bott_cutmap2[i]
@@ -111,51 +111,49 @@ for key in keys:
         if kmer not in kmer_back_bott:
             kmer_back_bott[kmer] = 0
         kmer_back_bott[kmer] += 1
-        if count1 > 0 and kmer not in kmer_count1_bott:
+        if kmer not in kmer_count1_bott:
             kmer_count1_bott[kmer] = 0
             kmer_ncount1_bott[kmer] = 0
-        if count2 > 0 and kmer not in kmer_count2_bott:
+        kmer_count1_bott[kmer] += float(count1)
+        kmer_ncount1_bott[kmer] += float(count1) / sum(bott_cutmap1)
+        if kmer not in kmer_count2_bott:
             kmer_count2_bott[kmer] = 0
             kmer_ncount2_bott[kmer] = 0
-        if count1 > 0:
-            kmer_count1_bott[kmer] += float(count1)
-            kmer_ncount1_bott[kmer] += float(count1) / sum(bott_cutmap1)
-        if count2 > 0:
-            kmer_count2_bott[kmer] += float(count2)
-            kmer_ncount2_bott[kmer] += float(count2) / sum(bott_cutmap2)
+        kmer_count2_bott[kmer] += float(count2)
+        kmer_ncount2_bott[kmer] += float(count2) / sum(bott_cutmap2)
 
-back_kmer_top = []
-for kmer, count in kmer_back_top.items():
-    back_kmer_top.append([count, kmer])
-back_kmer_bott = []
-for kmer, count in kmer_back_bott.items():
-    back_kmer_bott.append([count, kmer])
-count_kmer1_top = []
-for kmer, count in kmer_count1_top.items():
-    count_kmer1_top.append([count, kmer])
-count_kmer1_bott = []
-for kmer, count in kmer_count1_bott.items():
-    count_kmer1_bott.append([count, kmer])
-count_kmer2_top = []
-for kmer, count in kmer_count2_top.items():
-    count_kmer2_top.append([count, kmer])
-count_kmer2_bott = []
-for kmer, count in kmer_count2_bott.items():
-    count_kmer2_bott.append([count, kmer])
+kmers = list(set(all_path(k, 'ATCG')) - set(kmer_back_top.keys()))
+for kmer in kmers:
+    kmer_back_top[kmer] = 0
+    kmer_count1_top[kmer] = 0
+    kmer_ncount1_top[kmer] = 0
+    kmer_count2_top[kmer] = 0
+    kmer_ncount2_top[kmer] = 0
+
+kmers = list(set(all_path(k, 'ATCG')) - set(kmer_back_bott.keys()))
+for kmer in kmers:
+    kmer_back_bott[kmer] = 0
+    kmer_count1_bott[kmer] = 0
+    kmer_ncount1_bott[kmer] = 0
+    kmer_count2_bott[kmer] = 0
+    kmer_ncount2_bott[kmer] = 0
     
-back_kmer_top = sorted(back_kmer_top, cmp=tuple_cmp, reverse=True)
-back_kmer_bott = sorted(back_kmer_bott, cmp=tuple_cmp, reverse=True)
-count_kmer1_top = sorted(count_kmer1_top, cmp=tuple_cmp, reverse=True)
-count_kmer1_bott = sorted(count_kmer1_bott, cmp=tuple_cmp, reverse=True)
-count_kmer2_top = sorted(count_kmer2_top, cmp=tuple_cmp, reverse=True)
-count_kmer2_bott = sorted(count_kmer2_bott, cmp=tuple_cmp, reverse=True)
+kmer_count_list = [kmer_count1_top, kmer_count1_bott, kmer_back_top, kmer_back_bott]
+
+total_kmer = []
+for kmer in all_path(k, 'ATCG'):
+    total = 0
+    for kmer_count in kmer_count_list:
+        total += kmer_count[kmer]
+    total_kmer.append([total, kmer])
+total_kmer = sorted(total_kmer, cmp=tuple_cmp, reverse=True)
 
 X = []
 Y1, Y2 = [], []
 Y3, Y4 = [], []
-for count, kmer in count_kmer1_top:
+for count, kmer in total_kmer:
     X.append(kmer)
-    Y1.append(count)
+    Y1.append(kmer_count1_top[kmer])
     Y2.append(kmer_count1_bott[kmer])
     Y3.append(kmer_back_top[kmer])
     Y4.append(kmer_back_bott[kmer])
@@ -170,11 +168,22 @@ plt.legend()
 #plt.show()
 plt.close()
 
+kmer_count_list = [kmer_count2_top, kmer_count2_bott, kmer_back_top, kmer_back_bott]
+kmers = set(kmer_back_top.keys()) | set(kmer_back_bott.keys())
+
+total_kmer = []
+for kmer in all_path(k, 'ATCG'):
+    total = 0
+    for kmer_count in kmer_count_list:
+        total += kmer_count[kmer]
+    total_kmer.append([total, kmer])
+total_kmer = sorted(total_kmer, cmp=tuple_cmp, reverse=True)
+
 X = []
 Y1, Y2 = [], []
-for count, kmer in count_kmer2_top:
+for count, kmer in total_kmer:
     X.append(kmer)
-    Y1.append(count)
+    Y1.append(kmer_count2_top[kmer])
     Y2.append(kmer_count2_bott[kmer])
 
 fig = plt.figure()
@@ -196,16 +205,22 @@ g = float(bott_total) / top_total
 
 
 # estimate kmer dependent cleavage efficiency
+def fold (a, b):
+    if b > 0:
+        return float(a)/float(b)
+    assert a == 0 and b == 0 
+    return 1.0
+
 kmers = all_path(k, 'ATCG')
 kmer_top_fold1, kmer_bott_fold1 = {}, {}
 kmer_top_fold2, kmer_bott_fold2 = {}, {}
 kmer_fold1, kmer_fold2 = {}, {}
 kmer_fold = {}
 for kmer in kmers:
-    top_fold1 = kmer_ncount1_top[kmer] / kmer_back_top[kmer]
-    bott_fold1 = kmer_ncount1_bott[kmer] / kmer_back_bott[kmer]
-    top_fold2 = kmer_ncount2_top[kmer] / kmer_back_top[kmer]
-    bott_fold2 = kmer_ncount2_bott[kmer] / kmer_back_bott[kmer]
+    top_fold1 = fold(kmer_ncount1_top[kmer], kmer_back_top[kmer])
+    bott_fold1 = fold(kmer_ncount1_bott[kmer], kmer_back_bott[kmer])
+    top_fold2 = fold(kmer_ncount2_top[kmer], kmer_back_top[kmer])
+    bott_fold2 = fold(kmer_ncount2_bott[kmer], kmer_back_bott[kmer])
     fold1 = top_fold1 + bott_fold1
     fold2 = top_fold2 + bott_fold2
     if kmer not in kmer_top_fold1:
@@ -275,6 +290,20 @@ plt.legend()
 #plt.show()
 plt.close()
 
+
+# build linear model from collected kmers
+seq_list = []
+score_list = []
+count_list = []
+for kmer, freq in kmer_freq.items():
+    seq_list.append(kmer)
+    score_list.append(freq)
+    count_list.append(freq)
+
+m = LinModel.SeqLinearModel(seq_list, score_list, count_list)
+m.train(MM_orders=[1], Kmer_k_b=None, PolyA_b=False, GC_b=False, Harmonic=False, sym=False)
+
+
 # estimate the corrected dyad signal
 for key in keys:
     slider1 = key_slider1[key]
@@ -284,9 +313,9 @@ for key in keys:
     bott_cutmap1, bott_cutmap2 = slider1.left_cutmap, slider2.left_cutmap
     new_dyadmap1, new_dyadmap2 = [], []
     for i in range(len(top_cutmap1)):
-        if i < offset+3:
+        if i < offset+k:
             signal1, signal2 = 0.0, 0.0
-        elif i >= len(top_cutmap1) - (offset+3):
+        elif i >= len(top_cutmap1) - (offset+k):
             signal1, signal2 = 0.0, 0.0
         else:
             top_kmer = seq[i-offset-1-k/2:i-offset-1+k/2+1]
@@ -295,8 +324,10 @@ for key in keys:
             #bott_kmer = rev_comp(seq[i:i+2])
             t = kmer_freq[top_kmer]
             b = kmer_freq[bott_kmer]
-            signal1 = float(top_cutmap1[i-offset]/t + bott_cutmap1[i+offset]/(g*b))
-            signal2 = float(top_cutmap2[i-offset]/t + bott_cutmap2[i+offset]/(g*b))  
+            #t = m.score_predict(top_kmer)
+            #b = m.score_predict(bott_kmer)
+            signal1 = float(top_cutmap1[i-offset])/t + float(bott_cutmap1[i+offset])/(g*b)
+            signal2 = float(top_cutmap2[i-offset])/t + float(bott_cutmap2[i+offset])/(g*b)  
         new_dyadmap1.append(signal1)
         new_dyadmap2.append(signal2)
 
@@ -305,8 +336,11 @@ for key in keys:
     dyadmap1 = norm(slider1.dyadmap)
     dyadmap2 = norm(slider2.dyadmap)
 
-    key_slider1[key].dyadmap = new_dyadmap1
-    key_slider2[key].dyadmap = new_dyadmap2
+    #key_slider1[key].dyadmap = new_dyadmap1
+    #key_slider2[key].dyadmap = new_dyadmap2
+    key_slider1[key].dyadmap = dyadmap1
+    key_slider2[key].dyadmap = dyadmap2
+
 
     fig = plt.figure()
     plt.plot(dyadmap1, label='HS old')

@@ -161,10 +161,14 @@ def plot_map(key_slider, sample_list, norm_choice, note = "", draw_key=False, dr
             dyad_tmp_img = []
 
             if draw_key:
-                #size, loc = key.split('-')
-                win, loc = key.split('-')
-                size, loc = len(win), int(loc)
-                st, ed = loc, loc+size
+                #win, loc = key.split('-')
+                #size, loc = len(win), int(loc)
+                try:
+                    loc, mtype, nts = key.split('-')
+                    size, loc = len(nts), int(loc)
+                    st, ed = loc, loc+size
+                except:
+                    st, ed = 0, 1
 
             for side in ['R','L']:
                 for k in range(A):
@@ -268,7 +272,6 @@ def plot_map(key_slider, sample_list, norm_choice, note = "", draw_key=False, dr
         plt.close()
         
 
-        
         fig=plt.figure()
         size = np.shape(dyad_img)
         height = float(size[0])
@@ -284,9 +287,13 @@ def plot_map(key_slider, sample_list, norm_choice, note = "", draw_key=False, dr
         #ax=plt.Axes(fig, [0.,0.,1.,1.])
         #ax.axis('off')
         #fig.add_axes(ax)
-        cmap = plt.cm.Greens
+        #cmap = plt.cm.Greens
+        #cmap = plt.cm.Purples
+        #cmap = plt.cm.binary_r
+        cmap = plt.cm.jet
         if draw_key:
-            cmap.set_bad((1, 0, 0, 1))
+            #cmap.set_bad((1, 0, 0, 1))
+            cmap.set_bad('y', 1)
         ax.imshow(dyad_img, cmap=cmap, interpolation='none')
         if draw_vert:
             center = len(dyad_img[0])/2
@@ -363,7 +370,9 @@ def plot_signal (key_slider, sample_list=None, KDE = False, show_key = False, no
                     ed = st + num
                     plt.axvspan(st, ed-1, alpha=0.5, color='red')
             """
-            win, st = key.split('-')
+            #win, st = key.split('-')
+            loc, mtype, nts = key.split('-')
+            win, loc = len(nts), int(loc)
             st = int(st)
             #ed = st + int(win)
             ed = st+len(win)
@@ -406,7 +415,9 @@ def plot_signal (key_slider, sample_list=None, KDE = False, show_key = False, no
                     ed = st + num
                     plt.axvspan(st, ed-1, alpha=0.5, color='red')
             """
-            win, st = key.split('-')
+            #win, st = key.split('-')
+            loc, mtype, nts = key.split('-')
+            win, loc = len(nts), int(loc)
             st = int(st)
             #ed = st + len(win)
             ed = st+len(win)
@@ -615,7 +626,7 @@ def plot_corr (key_slider, obs_func1, obs_func2, sample_list=None, xlabel="", yl
         plt.close()
 
 # plot correlation between seq observable and sig observable (combined all)
-def plot_corr2 (key_slider, obs_func1, obs_func2, sample_list=None, sample_labels=None, xlabel="", ylabel=""):    
+def plot_corr2 (key_slider, obs_func1, obs_func2, sample_list=None, sample_labels=None, xlabel="", ylabel="", note=""):    
     def get_corr(x, y):
         assert len(x) == len(y)
         n = len(x)
@@ -639,6 +650,7 @@ def plot_corr2 (key_slider, obs_func1, obs_func2, sample_list=None, sample_label
         sample_labels = [None] * len(sample_list)
 
     color_list = ['r','b']
+    cmap_list = ['Reds', 'Blues']
         
     for i in range(len(sample_list)):
         key_list = sample_list[i]
@@ -659,7 +671,7 @@ def plot_corr2 (key_slider, obs_func1, obs_func2, sample_list=None, sample_label
         print "%s VS %s correlation: %f" % (xlabel, ylabel, get_corr(X,Y))
         plt.figure(1)
         plt.plot(X,Y, '.', color=color_list[i], markersize=7, alpha=0.3, label=sample_labels[i])
-        sns.kdeplot(X,Y, shade=False, shade_lowest=False)
+        sns.kdeplot(X,Y, shade=False, shade_lowest=False, cmap=cmap_list[i], alpha=0.7)
 
         #fig = plt.figure()
         #sns.lmplot(x=xlabel, y=ylabel, data=data_frame)
@@ -685,19 +697,19 @@ def plot_corr2 (key_slider, obs_func1, obs_func2, sample_list=None, sample_label
     plt.xticks(fontsize=15)
     plt.yticks(fontsize=15)
     plt.xlim([-5,30])
-    plt.ylim([-20,20])
+    plt.ylim([-30,30])
     leg = plt.legend(loc='best', numpoints=1, prop={'size': 15})
     for lh in leg.legendHandles:
         lh._legmarker.set_markersize(15)
         lh._legmarker.set_alpha(1)
-    plt.savefig(xlabel + 'VS' + ylabel + '_scatter_' + '.png')
+    plt.savefig(xlabel + 'VS' + ylabel + '_scatter_' + note + '.png')
     plt.close()
     
     plt.figure(2)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.legend()
-    plt.savefig(xlabel + 'VS' + ylabel + '.png')
+    plt.savefig(xlabel + 'VS' + ylabel + '_' + note + '.png')
     plt.close()
 
 
@@ -788,9 +800,10 @@ def plot_energy (key_slider1, key_slider2,  sample_list=None, note=""):
         
         for j in range(len(key_list)):
             key = key_list[j]
-            #size, loc = key.split('-')
-            win, loc = key.split('-')
-            size, loc = len(win), int(loc)
+            #win, loc = key.split('-')
+            #size, loc = len(win), int(loc)
+            loc, mtype, nts = key.split('-')
+            size, loc = len(nts), int(loc)
             st, ed = loc, loc+size
             
             slider1, slider2 = key_slider1[key], key_slider2[key]

@@ -175,9 +175,9 @@ class Slider:
         return max(num)
     
     def Amer_len(self):
-        #size,loc = self.id.split('-')
-        win,st = self.id.split('-')
-        return len(win)
+        #win,st = self.id.split('-')
+        loc, mtype, nts = self.id.split('-')
+        return len(nts)
     
     def weighted_GC (self):
         result = 0.0

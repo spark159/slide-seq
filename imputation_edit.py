@@ -324,6 +324,7 @@ def simulation (id_seq,
 def Naive (id_seq,
            top,
            bott,
+           ref_length,
            dyad_offset):
 
     mtop, mbott = [], []
@@ -349,6 +350,7 @@ def Naive (id_seq,
 def Linear_reg (id_seq,
                 top,
                 bott,
+                ref_length,
                 dyad_offset,
                 graph=False):
 
@@ -412,8 +414,15 @@ def Linear_reg (id_seq,
             if zero_frac(Y) > 0.7: # Y domain is empty
                 continue
 
-            coefs1, rsquare1 = robust_fit(X, Y)  # Top to bottom
-            coefs2, rsquare2 = robust_fit(Y, X)  # Bottom to Top
+            try:
+                coefs1, rsquare1 = robust_fit(X, Y)  # Top to bottom
+            except:
+                coefs1, rsquare1 = None, -sys.maxint # fitting error
+
+            try:
+                coefs2, rsquare2 = robust_fit(Y, X)  # Bottom to Top
+            except:
+                coefs2, rsquare2 = None, -sys.maxint # fitting error
 
             """
             if RSS1 > RSS2:
@@ -520,6 +529,7 @@ def Bayesian (N,
               id_seq,
               top,
               bott,
+              ref_length,
               dyad_offset,
               left_bound,
               right_bound,
@@ -725,9 +735,9 @@ def Bayesian (N,
 
     # give initial guess
     if initial == "linear":
-        dyad, mtop, mbott = Linear_reg (id_seq, top, bott, dyad_offset)
+        dyad, mtop, mbott = Linear_reg (id_seq, top, bott, ref_length, dyad_offset)
     else:
-        dyad, mtop, mbott = Naive (id_seq, top, bott, dyad_offset)
+        dyad, mtop, mbott = Naive (id_seq, top, bott, ref_length, dyad_offset)
     dyad = dyad[0]
     mtop = mtop[0]
     mbott = mbott[0]
@@ -788,6 +798,7 @@ def Bayesian (N,
     return dyad_list, ratio_list, noise_list, mtop_list, mbott_list
 
 
+"""
 # read reference
 id_seq = {}
 for line in open("polyAscanlib.ref"):
@@ -850,4 +861,5 @@ write_file(mtop_linear, "mtop_linear" + note + ".txt")
 write_file(mbott_linear, "mbott_linear" + note + ".txt")
 
 # Bayesain imputation
-dyad_list, ratio_list, noise_list, mtop_list, mbott_list = Bayesian (10, id_seq, top, bott, dyad_offset, left_bound, right_bound, note='_bayesian' + note)
+dyad_list, ratio_list, noise_list, mtop_list, mbott_list = Bayesian (1, id_seq, top, bott, dyad_offset, left_bound, right_bound, note='_bayesian' + note)
+"""

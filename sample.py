@@ -15,12 +15,12 @@ def color_A (seq):
     return text
 
 def ID_cmp(a, b):
-    win1, loc1 = a.split('-')
-    win2, loc2 = b.split('-')
-    loc1, loc2 = int(lOAoc1), int(loc2)
-    if win1 < win2:
+    loc1, mtype1, nts1 = a.split('-')
+    loc2, mtype2, nts2 = b.split('-')
+    loc1, loc2 = int(loc1), int(loc2)
+    if nts1 < nts2:
         return -1
-    elif win1 == win2:
+    elif nts1 == nts2:
         if loc1 < loc2:
             return -1
         else:
@@ -39,8 +39,8 @@ def sampling (key_slider, sample_mode):
                 
                 alist = a[1].split('-')
                 blist = b[1].split('-')
-                alist = [alist[0], int(alist[1])]
-                blist = [blist[0], int(blist[1])]
+                alist = [alist[2], int(alist[0])]
+                blist = [blist[2], int(blist[0])]
                 if alist[0] < blist[0]:
                     return -1
                 elif alist[0] == blist[0]:
@@ -93,8 +93,8 @@ def sampling (key_slider, sample_mode):
                 
                 alist = a[1].split('-')
                 blist = b[1].split('-')
-                alist = [alist[0], int(alist[1])]
-                blist = [blist[0], int(blist[1])]
+                alist = [alist[2], int(alist[0])]
+                blist = [blist[2], int(blist[0])]
                 if alist[0] < blist[0]:
                     return -1
                 elif alist[0] == blist[0]:

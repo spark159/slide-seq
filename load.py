@@ -1,3 +1,4 @@
+import sys
 from SliderClass import Slider
 import numpy as np
 import matplotlib.pyplot as plt
@@ -16,15 +17,6 @@ def rev_comp (seq):
         if nt == 'G':
             new_seq += 'C'
     return new_seq
-
-def all_path(N, states='AC'):
-    if N==1:
-        return list(states)
-    output=[]
-    for path in all_path(N-1):
-        for state in states:
-            output.append(path+state)
-    return output
 
 def read_DNAshape(fname):
     names = ['MGW', 'HelT', 'ProT', 'Roll']
@@ -53,11 +45,20 @@ def read_DNAshape(fname):
     return dic_list
 
 # read sort files and return Slider objects
-def load_files(filenames, ref_length, dyad_axis, dyad_offset, key_choice='mapped_id', choice=['valid'], filter_num=0, fill=False, deconvolute = False, load_ref=False, shape_fname=False):
+def load_files(filenames,
+               ref_length,
+               dyad_axis,
+               dyad_offset,
+               key_choice='mapped_id',
+               choice=['valid'],
+               mtype_choice=None,
+               filter_num=0,
+               fill=False,
+               cut_pad=0,
+               load_ref=False,
+               shape_fname=False):
 
-    #weight_dict = {'R':{'A':1.308, 'C':0.879, 'T':0.642, 'G':1.152}, 'L':{'T':1.308, 'G':0.879, 'A':0.642, 'C':1.152}}
-    #weight_dict = {'R':{'A':10, 'C':0.5, 'T':0.01, 'G':2}, 'L':{'T':10, 'G':0.5, 'A':0.01, 'C':2}}
-
+    # collect the cleavage counts from sort file
     cutmaps, dyadmaps = {}, {}
     for i in range(len(filenames)):
         filename = filenames[i]
@@ -67,16 +68,34 @@ def load_files(filenames, ref_length, dyad_axis, dyad_offset, key_choice='mapped
                 if type not in choice:
                     continue
 
-                # for mmlib/IDlib case
-                loc, type, nts = mapped_id.split('-')
-                if type=='I':
-                    continue
-                mapped_id = nts + '-' + loc
-
-                cols=cutloc.split(':')
+                cols = cutloc.split(':')
                 if int(cols[1]) < 0 or int(cols[1]) >= ref_length:
                     continue
                 side, cut = cols[0], int(cols[1])
+
+                # backbone-based library case
+                try:
+                    loc, mtype, nts = mapped_id.split('-')
+                    loc = int(loc)
+                    if mtype_choice != None:
+                        if mtype not in mtype_choice:
+                            continue
+
+                    # temporal delesion case
+                    if mtype == 'D':
+                        nts = len(nts)*"N"
+                        mapped_id = '-'.join([str(loc), mtype, nts])
+
+                    # temporal M 1bp case
+                    if mtype in 'MID' and len(nts) == 1:
+                        cut_pad = 3
+                        if side == 'R' and loc - cut <= cut_pad:
+                            continue
+                        if side == 'L' and cut - loc <= cut_pad:
+                            continue
+                except:
+                    pass
+                    
                 if side == 'L':
                     offset = -dyad_offset
                     #nt = id_seq[id][cut+1]
@@ -99,9 +118,14 @@ def load_files(filenames, ref_length, dyad_axis, dyad_offset, key_choice='mapped
     # simple copy and paste correction
     if fill == "simple":
         for mapped_id in cutmaps:
-            #size, loc = mapped_id.split('-')
-            win, loc = mapped_id.split('-')
-            size, loc = len(win), int(loc)           
+            #win, loc = mapped_id.split('-')
+            #size, loc = len(win), int(loc)           
+            try:
+                loc, mtype, nts = mapped_id.split('-')
+            except:
+                print >> sys.stderr, "Error: there is no imputation position guide."
+                sys.exit(1)
+            size, loc = len(nts), int(loc)
             if size <= 0:
                 continue
             st, ed = loc, loc + size
@@ -138,16 +162,24 @@ def load_files(filenames, ref_length, dyad_axis, dyad_offset, key_choice='mapped
                     num +=1
             return num/len(L)
 
-        # collect valid cleavage frequencies
+        # collect available T/B data pair
         win_pos_TB = {}
         for mapped_id in cutmaps:
-            win, loc = mapped_id.split('-')
-            size, loc = len(win), int(loc)
+            #win, loc = mapped_id.split('-')
+            #size, loc = len(win), int(loc)
+            try:
+                loc, mtype, nts = mapped_id.split('-')
+            except:
+                print >> sys.stderr, "Error: there is no imputation position guide."
+                sys.exit(1)
+            win = len(nts)*'N'
+            #win = nts
+            size, loc = len(nts), int(loc)
             if size <= 0:
                 continue
             if win not in win_pos_TB:
                 win_pos_TB[win] = {}
-            st, ed = loc, loc + size
+            st, ed = loc - cut_pad, loc + size + cut_pad
             Rrange = range(max(ed - 2*dyad_offset, 0), min(ref_length - 2*dyad_offset, st))
             for i in Rrange:
                 if i not in win_pos_TB[win]:
@@ -158,7 +190,7 @@ def load_files(filenames, ref_length, dyad_axis, dyad_offset, key_choice='mapped
                 win_pos_TB[win][i]['B'].append(cutmaps[mapped_id]['L'][i + 2*dyad_offset])
 
 
-        # get linear model of T/B cleavage on each position
+        # build linear model of T/B cleavage on each position
         win_pos_model = {}
         for win in win_pos_TB:
             for pos in win_pos_TB[win]:
@@ -169,39 +201,60 @@ def load_files(filenames, ref_length, dyad_axis, dyad_offset, key_choice='mapped
                     continue
                 if zero_frac(Y) > 0.7: # Y domain is empty
                     continue
-                #fig = plt.figure()
-                #plt.plot(X, Y, '.k')
-                #X = [[x] for x in X]
-                #Z = model.predict(X)
-                #X = [x[0] for x in X]
-                #if rsquare < 0.03: # fitting failure
-                    #continue
 
-                #else:
-                    #plt.plot(X, Z, 'k')
-                coefs1, rsquare1 = robust_fit(X, Y)  # Top to bottom
-                coefs2, rsquare2 = robust_fit(Y, X)  # Bottom to Top
+                try:
+                    coefs1, rsquare1 = robust_fit(X, Y)  # Top to bottom
+                except:
+                    coefs1, rsquare1 = None, -sys.maxint # fitting error
+                    
+                try:
+                    coefs2, rsquare2 = robust_fit(Y, X)  # Bottom to Top
+                except:
+                    coefs2, rsquare2 = None, -sys.maxint # fitting error
 
+                # pick the best fitting
                 if rsquare1 >= 0 and rsquare2 >= 0:
                     if rsquare1 < rsquare2:
                         coefs1 = [1/coefs2[0], -1.0 * coefs2[1]/coefs2[0]]
                     if rsquare2 < rsquare1:
                         coefs2 = [1/coefs1[0], -1.0 * coefs1[1]/coefs1[0]]
                 else:
+                    # fitting failures
                     if rsquare1 < 0:
                         coefs1 = [0, np.median(Y)]
                     if rsquare2 < 0:
                         coefs2 = [0, np.median(X)]
+
+                # too dangerous fitting
+                if abs(coefs1[0]) > 200:
+                    #print pos
+                    #print coefs1[0]
+                    coefs1 = [0, np.median(Y)]
+                if abs(coefs2[0]) > 200:
+                    #print pos
+                    #print coefs2[0]
+                    coefs2 = [0, np.median(X)]
                     
-                #bound = max(max(X),max(Y))
-                #Z = [np.poly1d(coefs1)(x) for x in X]
-                #plt.plot(X, Z, 'k')
-                #Z = [np.poly1d(coefs2)(y) for y in Y]
-                #plt.plot(Z, Y, 'r')
-                #plt.xlim([-2, bound])
-                #plt.ylim([-2, bound])
-                #plt.show()
-                #plt.close()
+                if False:
+                    fig = plt.figure()
+                    plt.plot(X, Y, '.k')
+                    bound = max(max(X),max(Y))
+                    Z = [np.poly1d(coefs1)(x) for x in X]
+                    plt.plot(X, Z, 'b', alpha=0.5, label="TopToBott")
+                    print pos
+                    print "TopToBott", coefs1[0]
+                    Z = [np.poly1d(coefs2)(y) for y in Y]
+                    plt.plot(Z, Y, 'r', alpha=0.5, label="BottToTop")
+                    print "BottToTop", coefs2[0]
+                    print 
+                    plt.xlim([-2, bound])
+                    plt.ylim([-2, bound])
+                    plt.title(str(pos))
+                    plt.xlabel("Top strand")
+                    plt.ylabel("Bott strand")
+                    plt.legend()
+                    #plt.show()
+                    plt.close()
     
                 if win not in win_pos_model:
                     win_pos_model[win] = {}
@@ -215,14 +268,21 @@ def load_files(filenames, ref_length, dyad_axis, dyad_offset, key_choice='mapped
                                 
         # fill the lost data based on linear model
         for mapped_id in cutmaps:
-            #size, loc = mapped_id.split('-')
-            win, loc = mapped_id.split('-')
-            size, loc = len(win), int(loc)           
+            #win, loc = mapped_id.split('-')
+            #size, loc = len(win), int(loc)           
+            try:
+                loc, mtype, nts = mapped_id.split('-')
+            except:
+                print >> sys.stderr, "Error: there is no imputation guide."
+                sys.exit(1)
+            win = len(nts)*'N'
+            #win = nts
+            size, loc = len(nts), int(loc)
             if size <= 0:
                 continue
             st, ed = loc, loc + size
-            Lrange = range(min(st + 2*dyad_offset, ref_length), ref_length)
-            Rrange = range(0, max(ed -1 - 2*dyad_offset, -1) + 1)
+            Lrange = range(min(st-cut_pad + 2*dyad_offset, ref_length), ref_length)
+            Rrange = range(0, max(ed+cut_pad -1 - 2*dyad_offset, -1) + 1)
             for i in Lrange:
                 try:
                     model = win_pos_model[win][i]['B']
@@ -245,7 +305,6 @@ def load_files(filenames, ref_length, dyad_axis, dyad_offset, key_choice='mapped
                     continue
                 cutmaps[mapped_id]['L'][i + 2*dyad_offset] += y
                 dyadmaps[mapped_id][i + dyad_offset] += y
-
     
     if filter_num:
         filtered = []
@@ -253,30 +312,9 @@ def load_files(filenames, ref_length, dyad_axis, dyad_offset, key_choice='mapped
             if sum(dyadmaps[mapped_id]) > filter_num:
                 filtered.append(mapped_id)
         cutmaps = {k:cutmaps[k] for k in filtered}
-        dyadmaps = {k:dyadmaps[k] for k in filtered}
-
-    """
-    if sym:
-        for mapped_id in cutmaps:
-            cutmap = cutmaps[mapped_id]
-            lcutmap, rcutmap = cutmap['L'], cutmap['R']
-            for i in range(len(rcutmap) - 2*dyad_offset):
-                maxsig = max(lcutmap[i + 2*dyad_offset], rcutmap[i])
-                lcutmap[i + 2*dyad_offset], rcutmap[i] = maxsig, maxsig
-            tempmap = [0.0]*ref_length
-            for i in range(ref_length):
-                lsig, rsig = lcutmap[i], rcutmap[i]
-                if i+dyad_offset < ref_length:
-                    tempmap[i+dyad_offset] += rsig
-                if i-dyad_offset >= 0:
-                    tempmap[i-dyad_offset] += lsig
-            dyadmaps[mapped_id] = tempmap
-    """
+        dyadmaps = {k:dyadmaps[k] for k in filtered}        
     
     assert len(cutmaps) == len(dyadmaps)
-    all_len = len(all_path(16))
-    print "id counts: " + str(len(cutmaps)) + '/' + str(all_len)
-
     
     id_seq = {}
     if load_ref:
@@ -321,6 +359,12 @@ def load_files(filenames, ref_length, dyad_axis, dyad_offset, key_choice='mapped
                                  ProT = id_ProT[mapped_id],
                                  Roll = id_Roll[mapped_id])
         i +=1
+
+    if load_ref:
+        report = str(i) + " / " + str(len(id_seq))
+    else:
+        report = str(i)
+    print "data size: " + report 
 
     return key_slider
     

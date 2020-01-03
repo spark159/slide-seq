@@ -116,7 +116,7 @@ if __name__ == '__main__':
     parser.add_argument('-n',
                         dest='num',
                         type=int,
-                        default = 10000, 
+                        default = 1000, 
                         help='iteration number for each sequence')
     parser.add_argument('--left_bound',
                         dest='left_bound',

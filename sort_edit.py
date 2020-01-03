@@ -292,7 +292,7 @@ if __name__ == '__main__':
                 return 'out'
             return name
 
-        common_name = common(read_fname1.rsplit('.')[0], read_fname2.rsplit('.')[0])
+        common_name = common(read_fname1.rsplit('.', 1)[0], read_fname2.rsplit('.', 1)[0])
         read_fname = common_name  + '.combined.fastq'
         
         # combine pair-end reads
@@ -345,7 +345,7 @@ if __name__ == '__main__':
         discard_multHit = False
     
     if not args.out_fname:
-        out_fname = read_fname.rsplit('.')[0]
+        out_fname = read_fname.rsplit('.', 1)[0]
     else:
         out_fname = args.out_fname
     

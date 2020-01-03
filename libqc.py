@@ -15,7 +15,8 @@ def rev_cmp (seq):
 
 def library_check (sort_fnames,
                    ref_fname,
-                   type_choice):
+                   type_choice,
+                   out_note):
     
     def read_ref (ref_fname):
         id_seq = {}
@@ -198,7 +199,7 @@ def library_check (sort_fnames,
         colors = ['gold', 'yellowgreen', 'lightcoral', 'lightskyblue', 'lightpink', 'lime']
         plt.pie(counts,colors=colors, labels=types, shadow=True, startangle=90, autopct='%1.1f%%', explode=explode)
         plt.axis('equal')
-        plt.savefig('pie'+'_cond'+str(i+1)+'.png')
+        plt.savefig('pie'+'_cond'+str(i+1) + out_note + '.png')
         #plt.show()
         plt.close()
 
@@ -224,7 +225,7 @@ def library_check (sort_fnames,
         plt.xlim([toplen-10, toplen+10])
         plt.xlabel('Read length (bp)')
         plt.ylabel('Read counts')
-        plt.savefig("bar_" + str(i+1) +'.png')
+        plt.savefig("bar_" + str(i+1) + out_note + '.png')
         #plt.show()
         plt.close()
 
@@ -245,10 +246,10 @@ def library_check (sort_fnames,
         if n < N:
             N = n
     # print N
-    ideal_ids = random_pick(all_ids, N)
-    ideal_seqs = []
-    for id in ideal_ids:
-        ideal_seqs.append(id_seq[id])
+    #ideal_ids = random_pick(all_ids, N)
+    #ideal_seqs = []
+    #for id in ideal_ids:
+    #    ideal_seqs.append(id_seq[id])
     #bias_ids = random_pick(all_ids, N, bias = 1)
     #bias_seqs = []
     #for id in bias_ids:
@@ -262,14 +263,16 @@ def library_check (sort_fnames,
         GC_count = GC_counting(chosen_seqs); normalize(GC_count)
         GC_count_list.append(GC_count)
         plt.scatter(GC_count.keys(), GC_count.values(), color = colors[i], label='Data'+str(i+1))
-    idealGC_count=GC_counting(ideal_seqs); normalize(idealGC_count)
-    plt.scatter(idealGC_count.keys(), idealGC_count.values(),color='green',marker='x', label='Ideal')
+        
+    #idealGC_count=GC_counting(ideal_seqs); normalize(idealGC_count)
+    #plt.scatter(idealGC_count.keys(), idealGC_count.values(),color='green',marker='x', label='Ideal')
+
     #biasGC_count=GC_counting(bias_seqs); normalize(biasGC_count)
     #plt.scatter(biasGC_count.keys(), biasGC_count.values(),color='red',marker='*', label='Biased')
     plt.xlabel('GC contents (%)')
     plt.ylabel('Frequency')
     plt.legend(loc='best')
-    plt.savefig('GCfreq.png')
+    plt.savefig('GCfreq' + out_note + '.png')
     #plt.show()
     plt.close()
 
@@ -281,18 +284,20 @@ def library_check (sort_fnames,
         id_count_list.append(id_count)
         p = plt.plot(range(len(id_count)), sorted(id_count.values()), label='Data'+str(i+1))
         plt.axvline(len(id_count), color = p[len(p)-1].get_color(), linestyle='dotted')
-    idealid_count = key_counting(ideal_ids)
-    p = plt.plot(range(len(idealid_count)), sorted(idealid_count.values()), label='Ideal')
-    plt.axvline(len(idealid_count), color = p[len(p)-1].get_color(), linestyle='dotted')
+
+    #idealid_count = key_counting(ideal_ids)
+    #p = plt.plot(range(len(idealid_count)), sorted(idealid_count.values()), label='Ideal')
+    #plt.axvline(len(idealid_count), color = p[len(p)-1].get_color(), linestyle='dotted')
+
     #biasid_count = key_counting(bias_ids)
     #p = plt.plot(range(len(biasid_count)), sorted(biasid_count.values()),  label='Biased')
     #plt.axvline(len(biasid_count), color = p[len(p)-1].get_color(), linestyle='dotted')
-    plt.ylim([0,1500])
-    plt.yticks(range(0,1500,200))
+    plt.ylim([0,max(id_count.values())*0.95])
+    plt.yticks(range(0,int(max(id_count.values())*0.95),int(max(id_count.values())*0.95/15.0)))
     plt.xlabel('Seq ID')
     plt.ylabel('Counts')
     plt.legend(loc='best')
-    plt.savefig('coverage.png')
+    plt.savefig('coverage' + out_note + '.png')
     #plt.show()
     plt.close()
 
@@ -332,13 +337,19 @@ def library_check (sort_fnames,
         print
 
         size_counts = {}
+        dtype_counts = {}
         for id, count in id_count.items():
-            win_size = int(id.split('-')[0])
+            #win_size = int(id.split('-')[0])
+            loc, dtype, nts = id.split('-')
+            win_size = len(nts)
             #if win_size == 0:
             #    continue
             if win_size not in size_counts:
                 size_counts[win_size] = []
             size_counts[win_size].append(count)
+            if dtype not in dtype_counts:
+                dtype_counts[dtype] = []
+            dtype_counts[dtype].append(count)
 
         X, Y, Z = [], [], []
         X0,Y0,Z0 = [], [], []
@@ -352,14 +363,27 @@ def library_check (sort_fnames,
             X.append(size)
             Y.append(np.mean(counts))
             Z.append(np.std(counts))
-        #plt.plot(X,Y,'.')
-        #plt.errorbar(X,Y,yerr=Z,fmt='o')
-        #plt.xlabel('Poly-A len')
-        #plt.ylabel('Counts')
-        #plt.savefig('polyAVScounts_' + str(i+1) + '.png')
-        #plt.close()
+        plt.plot(X,Y,'.')
+        plt.errorbar(X,Y,yerr=Z,fmt='o')
+        plt.xlabel('Poly-A len')
+        plt.ylabel('Counts')
+        plt.savefig('polyAVScounts_' + str(i+1) + out_note + '.png')
+        #plt.show()
+        plt.close()
 
+        dtype_list = dtype_counts.keys()
+        mean_list = [np.mean(dtype_counts[dtype]) for dtype in dtype_list]
+        err_list = [np.std(dtype_counts[dtype]) for dtype in dtype_list]
+        plt.bar(range(len(mean_list)), mean_list, yerr=err_list, width=0.25)
+        plt.xticks(range(len(mean_list)), dtype_list)
+        plt.xlabel('Type')
+        plt.ylabel('Counts')
+        plt.savefig('typeVScounts_' + str(i+1) + out_note + '.png')
+        #plt.show()
+        plt.close()
+            
 
+        """
         f, (ax, ax2) = plt.subplots(2, 1, sharex=True)
 
         # plot the same data on both axes
@@ -408,7 +432,7 @@ def library_check (sort_fnames,
         ax.set_ylabel('Counts')
         plt.savefig('polyAVScounts_' + str(i+1) + '.png')
         plt.close()        
-            
+        """
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='Check library quality and diversity')
@@ -425,8 +449,20 @@ if __name__ == '__main__':
                         type=str,
                         dest='choice',
                         help='DNA type choice for analysis')
+    parser.add_argument('-o',
+                        dest='out_note',
+                        type=str,
+                        help='output figure note')
+    
     args = parser.parse_args()
+
+    if args.out_note == None:
+        out_note = ""
+    else:
+        out_note = '_' + args.out_note
+
     
     library_check (args.sort_fnames,
                    args.ref_fname,
-                   args.choice)
+                   args.choice,
+                   out_note)

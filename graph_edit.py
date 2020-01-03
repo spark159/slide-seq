@@ -159,8 +159,10 @@ def plot_map(key_slider, sample_list, norm_choice, obs_func, draw = None, slicin
             obs_map = obs_func(slider, *args)
             
             if draw == 'key':
-                win, loc = key.split('-')
-                size, loc = len(win), int(loc)
+                #win, loc = key.split('-')
+                #size, loc = len(win), int(loc)
+                loc, mtype, nts = key.split('-')
+                size, loc = len(nts), int(loc)
                 st, ed = loc, loc+size
                 draw_map = np.zeros(len(obs_map))
                 draw_map[st:ed] = [np.nan] * size
@@ -208,7 +210,7 @@ def plot_map(key_slider, sample_list, norm_choice, obs_func, draw = None, slicin
         cmap = plt.cm.bwr
         if draw:
             cmap.set_bad((1, 0, 0, 1))
-        ax.imshow(obs_img, cmap=cmap, interpolation='none')
+        ax.imshow(obs_img, cmap=cmap, interpolation='none', vmin=-0.25, vmax=0.25)
         plt.savefig('obs_cond' + str(i+1) + note + '.png', dpi=1500)
         plt.close()
 

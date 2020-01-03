@@ -32,11 +32,17 @@ def read_data (fname):
         sample_times[name].append(time)
     return sample_rep_values, sample_times
 
-sample_rep_values, sample_times = read_data("0N80_sliding.csv")
+sample_rep_values, sample_times = read_data("/home/spark159/../../media/spark159/sw/dataforslide/0N80_A1I_sliding.csv")
 maxtime = np.max(sample_times.values())
 
-names = ['601 0N80', 'A3L 0N80', 'A3R 0N80', 'A3LM 0N80', 'A3RM 0N80']
-colors = ['r', 'g', 'b', 'orange', 'm']
+names = ['601 0N80']
+#names = ['601 0N80', 'A1L 0N80', 'A1R 0N80', 'A1LM 0N80', 'A1RM 0N80']
+#names = ['601 0N80', 'A2L 0N80', 'A2R 0N80', 'A2LM 0N80', 'A2RM 0N80']
+#names = ['601 0N80', 'A1LI typeI 0N80', 'A1LI typeII 0N80', 'A1RI typeI 0N80', 'A1RI typeII 0N80']
+#names = ['601 0N80', 'Top 1dU 0N80', 'Bott 1dU 0N80', 'Top 2dU 0N80', 'Bott 2dU 0N80', 'Top 1AP 0N80', 'Bott 1AP 0N80', 'Top 2AP 0N80', 'Bott 2AP 0N80']
+#names = ['601 0N80', 'Top 1dU 0N80', 'Bott 1dU 0N80', 'Top 2dU 0N80', 'Bott 2dU 0N80', 'Top 1AP 0N80', 'Bott 1AP 0N80', 'Top 2AP 0N80', 'Bott 2AP 0N80']
+
+colors = ['k', 'r', 'g', 'b', 'orange', 'm', 'y', 'cyan', 'steelblue']
 
 sample_ks = {}
 fig = plt.figure()
@@ -73,8 +79,8 @@ plt.ylabel("Slided fraction")
 leg = plt.legend()
 for lh in leg.legendHandles:
     lh.set_alpha(1)
-#plt.savefig("0N80_Sliding.png", bbox_inches='tight')
-plt.savefig("0N80_Sliding0.png", bbox_inches='tight')
+plt.savefig("0N80_Sliding.png", bbox_inches='tight')
+#plt.savefig("0N80_Sliding_log.png", bbox_inches='tight')
 #plt.show()
 plt.close()
 
@@ -93,21 +99,32 @@ for name in names:
     t_stds.append(t_std)
     
 fig = plt.figure()
-plt.bar(range(len(k_means)), k_means, width=0.5, yerr=k_stds, color=colors)
+k_means[-1] = 0
+k_stds[-1] = 0
+#plt.bar(range(len(k_means)), k_means, width=0.5, yerr=k_stds, color=colors)
+plt.barh(range(len(k_means)), k_means, xerr=k_stds, color=colors, height=0.5)
 plt.title("0N80 Sliding")
-plt.yscale("log")
-plt.xticks(range(len(k_means)), names)
-plt.ylabel("$k_{on} (min^{-1})$")
+#plt.yscale("log")
+#plt.xscale("log")
+#plt.xticks(range(len(k_means)), names, rotation=30)
+plt.yticks(range(len(k_means)), names)
+#plt.ylabel("$k_{on} (min^{-1})$")
+plt.xlabel("$k_{on} (min^{-1})$")
+plt.gca().invert_yaxis()
+#plt.ylim([0.1, 10])
 plt.savefig("0N80_sliding_kons.png", bbox_inches='tight')
 #plt.show()
 plt.close()
 
 fig = plt.figure()
+#t_means[-1] = 0
+#t_stds[-1] = 0
 plt.bar(range(len(t_means)), t_means, width=0.5, yerr=t_stds, color=colors)
 plt.title("0N80 Sliding")
 plt.yscale("log")
-plt.xticks(range(len(t_means)), names)
+plt.xticks(range(len(t_means)), names, rotation=30)
 plt.ylabel("Sliding time (min)")
+plt.ylim([0.1, 10])
 plt.savefig("0N80_sliding_times.png", bbox_inches='tight')
 #plt.show()
 plt.close()

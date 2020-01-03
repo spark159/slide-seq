@@ -365,6 +365,14 @@ def get_corr(x, y):
         ydiff2 += ydiff * ydiff
     return diffprod / np.sqrt(xdiff2 * ydiff2)
 
+def KL_div (dist1, dist2):
+    coeff = 0.0
+    for i in range(len(dist1)):
+        if  dist1[i] == 0 or dist2[i] == 0:
+            continue
+        coeff += dist1[i] * np.log2(float(dist1[i])/dist2[i])
+    return coeff
+
 def JS_dist (dist1, dist2):
     assert len(dist1) == len(dist2)
     def JS_div (dist1, dist2):
