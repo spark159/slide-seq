@@ -32,10 +32,11 @@ def read_data (fname):
         sample_times[name].append(time)
     return sample_rep_values, sample_times
 
-sample_rep_values, sample_times = read_data("/home/spark159/../../media/spark159/sw/dataforslide/0N80_A1I_sliding.csv")
+sample_rep_values, sample_times = read_data("/home/spark159/../../media/spark159/sw/dataforslide/0N80_NCP_sliding_2AP.csv")
 maxtime = np.max(sample_times.values())
 
-names = ['601 0N80']
+names = ['601 0N80', 'Top2AP 0N80', 'Bott2AP 0N80', 'Both2AP 0N80']
+#names = ['601 0N80']
 #names = ['601 0N80', 'A1L 0N80', 'A1R 0N80', 'A1LM 0N80', 'A1RM 0N80']
 #names = ['601 0N80', 'A2L 0N80', 'A2R 0N80', 'A2LM 0N80', 'A2RM 0N80']
 #names = ['601 0N80', 'A1LI typeI 0N80', 'A1LI typeII 0N80', 'A1RI typeI 0N80', 'A1RI typeII 0N80']
@@ -71,7 +72,7 @@ for i in range(len(names)):
         else:
             plt.plot(xx, yy, color, alpha=0.6)
 
-#plt.xscale("log")
+plt.xscale("log")
 plt.title("0N80 Sliding")
 plt.ylim([0, 1])
 plt.xlabel("Time (min)")
@@ -79,8 +80,8 @@ plt.ylabel("Slided fraction")
 leg = plt.legend()
 for lh in leg.legendHandles:
     lh.set_alpha(1)
-plt.savefig("0N80_Sliding.png", bbox_inches='tight')
-#plt.savefig("0N80_Sliding_log.png", bbox_inches='tight')
+#plt.savefig("0N80_Sliding.png", bbox_inches='tight')
+plt.savefig("0N80_Sliding_log.png", bbox_inches='tight')
 #plt.show()
 plt.close()
 
@@ -99,8 +100,8 @@ for name in names:
     t_stds.append(t_std)
     
 fig = plt.figure()
-k_means[-1] = 0
-k_stds[-1] = 0
+k_means[-2], k_means[-1] = 0, 0
+k_stds[-2], k_stds[-1] = 0, 0 
 #plt.bar(range(len(k_means)), k_means, width=0.5, yerr=k_stds, color=colors)
 plt.barh(range(len(k_means)), k_means, xerr=k_stds, color=colors, height=0.5)
 plt.title("0N80 Sliding")
