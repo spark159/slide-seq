@@ -344,6 +344,20 @@ class Slider:
             return 0.0
         return sig
 
+    def peak_signal (self, choice='dyad', num=5):
+        if choice == 'dyad':
+            map = self.dyadmap
+        elif choice == 'left':
+            map = self.left_cutmap
+        elif choice == 'right':
+            map = self.right_cutmap
+        loc_sig_list = self.find_peaks(choice=choice, num=num, back= False)
+        peak_signal = [0.0]*self.ref_length
+        for loc_sig in loc_sig_list:
+            loc, sig = loc_sig
+            peak_signal[loc] += sig
+        return peak_signal
+
     def KDE (self, band_width=0.5):
         X, X_plot = [], []
         for k in range(len(self.dyadmap)):

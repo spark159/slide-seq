@@ -290,10 +290,11 @@ def plot_map(key_slider, sample_list, norm_choice, note = "", draw_key=False, dr
         #cmap = plt.cm.Greens
         #cmap = plt.cm.Purples
         #cmap = plt.cm.binary_r
-        cmap = plt.cm.jet
+        #cmap = plt.cm.jet
+        cmap = plt.cm.binary
         if draw_key:
-            #cmap.set_bad((1, 0, 0, 1))
-            cmap.set_bad('y', 1)
+            cmap.set_bad((1, 0, 0, 1))
+            #cmap.set_bad('y', 1)
         ax.imshow(dyad_img, cmap=cmap, interpolation='none')
         if draw_vert:
             center = len(dyad_img[0])/2

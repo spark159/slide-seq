@@ -110,11 +110,12 @@ def norm(L):
 
 def sub_background (map, frac=0.1):
     thres= min(map) + frac*(max(map)-min(map))
-    new = [0 for i in range(len(map))]
-    for i in range(len(map)):
-        if map[i] > thres:
-            new[i] = map[i]
-    return new
+    #new = [0 for i in range(len(map))]
+    #for i in range(len(map)):
+    #    if map[i] > thres:
+    #        new[i] = map[i]
+    #return new
+    return [max(value-thres, 0.0) for value in map]
 
 def find_peaks(map, back= False, num=1):
     nmap = map[:]
@@ -252,33 +253,41 @@ def get_peaks(key_slider, left_cut_peak_num, right_cut_peak_num, dyad_peak_num, 
         return cutpeaks_list[0], dyadpeaks_list[0]
     return cutpeaks_list, dyadpeaks_list
 
-def Kmeans(dic, cluster_num, sample_list=None, cut_off=False, selected=False):
+def Kmeans(dic, cluster_num, sample_list=None, type_targets=[None, []]):
     if sample_list == None:
         sample_list = [dic.keys()]
-
+        
     key_cdx_list, cdx_key_list = [], []
+    type, targets = type_targets
     for u in range(len(sample_list)):
         key_list = sample_list[u]
-        if cut_off:
-            st, en = dyad_axis - cut_off, dyad_axis + cut_off
-        else:
-            st, en = 0, ref_length 
-        dic = {k:dic[k][st:en] for k in key_list}
-        if selected:
-            for key in dic:
+        X = []
+        for key in key_list:
+            if type == "slicing":
                 temp = []
-                for idx in selected:
-                    temp += [dic[key][idx]]
-                temp = norm(temp)
-                dic[key] = temp
+                for st, ed in sorted(targets):
+                    temp += dic[key][st:ed]
+                X.append(temp)
+            if type == "exclude":
+                for k in sorted(targets, reversed=True):
+                    del dic[key][k]
+                X.append(dic[key])
+            elif type == "include":
+                X.append([dic[key][k] for k in targets])
+            else:
+                X.append(dic[key])
         X = []
         for key in key_list:
             X.append(dic[key])
-        y = sklearn.cluster.KMeans(n_clusters = cluster_num, max_iter = 10000).fit_predict(np.asarray(X))
+        #y = sklearn.cluster.KMeans(init='k-means++', n_init=10, n_clusters = cluster_num, max_iter = 10000).fit_predict(np.asarray(X))
         #y = sklearn.cluster.DBSCAN().fit_predict(np.asarray(X))
+        #print y
+        #y = sklearn.cluster.SpectralClustering(n_clusters = cluster_num).fit_predict(np.asarray(X))
+        model = sklearn.cluster.AgglomerativeClustering(n_clusters=cluster_num, linkage='ward').fit(np.asarray(X))
+        y = model.labels_
         key_cdx, cdx_key = {}, {}
         for i in range(len(y)):
-            key, cdx = key_list[i], y[i]+1
+            key, cdx = key_list[i], y[i]
             assert key not in key_cdx
             key_cdx[key] = cdx
             if cdx not in cdx_key:
@@ -288,8 +297,8 @@ def Kmeans(dic, cluster_num, sample_list=None, cut_off=False, selected=False):
         cdx_key_list.append(cdx_key)
 
     if len(sample_list) <= 1:
-        return key_cdx_list[0], cdx_key_list[0]
-    return key_cdx_list, cdx_key_list
+        return key_cdx_list[0], cdx_key_list[0], model
+    return key_cdx_list, cdx_key_list, model
 
 def PCA(dic, comp_num, sample_list=None, norm_choice=False):
     if sample_list == None:
@@ -390,7 +399,17 @@ def JS_dist (dist1, dist2):
     if sum(dist2) != 1:
         dist2 = norm(dist2)
     return np.sqrt(JS_div(dist1, dist2))
-        
+
+def distance_matrix (key_slider):
+    pair_dist = {}
+    keys = key_slider.keys()
+    for i in range(len(keys)-1):
+        for j in range(i+1, len(keys)):
+            key1, key2 = keys[i], keys[j]
+            dist = JS_dist(key_slider[key1].dyadmap, key_slider[key2].dydmap)
+            assert (key1, key2) not in pair_dist
+            pair_dist[(key1, key2)] = dist
+    return pair_dist        
 
 def compare_map (key_slider1, key_slider2):
     def Bhatta_coeff (dist1, dist2):

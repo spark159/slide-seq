@@ -140,7 +140,7 @@ def all_path(N, states='AC'):
     return output
 
 # plot cut/dyad map
-def plot_map(key_slider, sample_list, norm_choice, obs_func, draw = None, slicing = 0, note = "", *args ):    
+def plot_map(key_slider, sample_list, norm_choice, obs_func, draw = None, slicing = 0, note = "", *args):    
     for i in range(len(sample_list)):
         key_list = sample_list[i]
         obs_img = []
@@ -207,10 +207,12 @@ def plot_map(key_slider, sample_list, norm_choice, obs_func, draw = None, slicin
         ax.spines['left'].set_visible(False)
         ax.spines['right'].set_visible(False)
         plt.tick_params(top='off', left='off', right='off', labelleft='off', labelbottom='on')
-        cmap = plt.cm.bwr
+        #cmap = plt.cm.bwr
+        cmap = plt.cm.binary
         if draw:
             cmap.set_bad((1, 0, 0, 1))
-        ax.imshow(obs_img, cmap=cmap, interpolation='none', vmin=-0.25, vmax=0.25)
+        #ax.imshow(obs_img, cmap=cmap, interpolation='none', vmin=-0.25, vmax=0.25)
+        ax.imshow(obs_img, cmap=cmap, interpolation='none')
         plt.savefig('obs_cond' + str(i+1) + note + '.png', dpi=1500)
         plt.close()
 
