@@ -81,9 +81,10 @@ def display_traces (Traces):
     plt.close()
     return None
 
-trans_matrix = get_random_chain(state_num=1000)
+#trans_matrix = get_random_chain(state_num=1000)
 #print trans_matrix
 #trans_matrix = [[0.5,0.5],[0.5,0.5]]
-Traces = Markov_chain(trans_matrix, 10, 30)
-display_traces (Traces)
+#Traces = Markov_chain(trans_matrix, 10, 30)
+#display_traces (Traces)
 #print get_dist(Traces, trans_matrix, "pop")
+

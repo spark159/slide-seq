@@ -280,11 +280,11 @@ def Kmeans(dic, cluster_num, sample_list=None, type_targets=[None, []]):
         for key in key_list:
             X.append(dic[key])
         #y = sklearn.cluster.KMeans(init='k-means++', n_init=10, n_clusters = cluster_num, max_iter = 10000).fit_predict(np.asarray(X))
-        #y = sklearn.cluster.DBSCAN().fit_predict(np.asarray(X))
+        y = sklearn.cluster.DBSCAN().fit_predict(np.asarray(X))
         #print y
         #y = sklearn.cluster.SpectralClustering(n_clusters = cluster_num).fit_predict(np.asarray(X))
-        model = sklearn.cluster.AgglomerativeClustering(n_clusters=cluster_num, linkage='ward').fit(np.asarray(X))
-        y = model.labels_
+        #model = sklearn.cluster.AgglomerativeClustering(n_clusters=cluster_num, linkage='ward').fit(np.asarray(X))
+        #y = model.labels_
         key_cdx, cdx_key = {}, {}
         for i in range(len(y)):
             key, cdx = key_list[i], y[i]
@@ -297,8 +297,8 @@ def Kmeans(dic, cluster_num, sample_list=None, type_targets=[None, []]):
         cdx_key_list.append(cdx_key)
 
     if len(sample_list) <= 1:
-        return key_cdx_list[0], cdx_key_list[0], model
-    return key_cdx_list, cdx_key_list, model
+        return key_cdx_list[0], cdx_key_list[0]
+    return key_cdx_list, cdx_key_list
 
 def PCA(dic, comp_num, sample_list=None, norm_choice=False):
     if sample_list == None:

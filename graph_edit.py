@@ -69,7 +69,7 @@ def create_map(cuts, N=ref_length):
     #global dyad_axis
     return map
 
-def normalize (img):
+def normalize (img, percentage=True):
     total=0.0
     new = [[0]*len(img[0]) for i in range(len(img))]
     for i in range(len(img)):
@@ -79,7 +79,10 @@ def normalize (img):
         return new
     for i in range(len(img)):
         for j in range(len(img[i])):
-            new[i][j] = (img[i][j]/float(total))*100
+            if percentage:
+                new[i][j] = (img[i][j]/float(total))*100
+            else:
+                new[i][j] = (img[i][j]/float(total))
     return new
 
 def sub_background (map, frac=0.1):
@@ -152,6 +155,10 @@ def plot_map(key_slider, sample_list, norm_choice, obs_func, draw = None, slicin
             if draw:
                 A,B,C,D = 4, 8, 0, 2
 
+        # temporal
+        A,B,C,D = 4, 8, 0, 2
+        D = 6
+
         for j in range(len(key_list)):
             key = key_list[j]
             slider = key_slider[key]
@@ -208,10 +215,11 @@ def plot_map(key_slider, sample_list, norm_choice, obs_func, draw = None, slicin
         ax.spines['right'].set_visible(False)
         plt.tick_params(top='off', left='off', right='off', labelleft='off', labelbottom='on')
         #cmap = plt.cm.bwr
-        cmap = plt.cm.binary
+        cmap = plt.cm.YlGnBu
+        #cmap = plt.cm.jet
         if draw:
             cmap.set_bad((1, 0, 0, 1))
-        #ax.imshow(obs_img, cmap=cmap, interpolation='none', vmin=-0.25, vmax=0.25)
+        #ax.imshow(obs_img, cmap=cmap, interpolation='none', vmin=-0.15, vmax=0.15)
         ax.imshow(obs_img, cmap=cmap, interpolation='none')
         plt.savefig('obs_cond' + str(i+1) + note + '.png', dpi=1500)
         plt.close()
@@ -228,7 +236,7 @@ def plot_signal (key_slider, sample_list, norm_choice, obs_func, mean_choice=Fal
             slider = key_slider[key]
             obs = obs_func(slider, *args)
             if norm_choice:
-                obs = normalize([obs])[0]
+                obs = normalize([obs], percentage=False)[0]
             obs = np.asarray(obs)
             obs_list.append(obs)
         if mean_choice:
@@ -242,8 +250,8 @@ def plot_signal (key_slider, sample_list, norm_choice, obs_func, mean_choice=Fal
                 label = key_list[k]
             plt.plot(obs, label=label)
         if draw == 'key':
-            win, loc = key.split('-')
-            size, loc = len(win), int(loc)
+            loc, mtype, nts = key.split('-')
+            size, loc = len(nts), int(loc)
             st, ed = loc, loc+size
             plt.axvspan(st, ed-1, alpha=0.5, color='red')
         if draw == 'polyA':
@@ -258,7 +266,7 @@ def plot_signal (key_slider, sample_list, norm_choice, obs_func, mean_choice=Fal
         plt.xlabel('Location (bp)')
         plt.ylabel('Signal')
         plt.legend(loc='best')
-        plt.show()
+        #plt.show()
         plt.savefig('sig_fig' + str(i+1) + note + '.png', bbox_inches = 'tight')
         plt.close()
 

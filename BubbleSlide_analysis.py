@@ -445,7 +445,7 @@ except:
                     Size_loc_force2[size][k] = []
                 Size_loc_force2[size][k].append(-force2[i])
 
-    
+                
     f1 = open("temp_energy_before.pickle", "wb")
     pickle.dump(Size_loc_energy1, f1)
     f1.close()

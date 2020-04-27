@@ -344,7 +344,7 @@ class Slider:
             return 0.0
         return sig
 
-    def peak_signal (self, choice='dyad', num=5):
+    def peak_signal (self, choice='dyad', num=5, broden=1):
         if choice == 'dyad':
             map = self.dyadmap
         elif choice == 'left':
@@ -356,6 +356,9 @@ class Slider:
         for loc_sig in loc_sig_list:
             loc, sig = loc_sig
             peak_signal[loc] += sig
+            for offset in range(1, broden+1):
+                peak_signal[loc-offset] += sig
+                peak_signal[loc+offset] += sig
         return peak_signal
 
     def KDE (self, band_width=0.5):
