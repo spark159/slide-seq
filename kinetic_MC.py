@@ -1,4 +1,5 @@
 import random
+import copy
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -75,15 +76,19 @@ def display_traces (State_traces, Time_traces):
     plt.close()
     return None
 
-def uniform_trans_rate_matrix (state_num, rate):
+def uniform_trans_rate_matrix (state_num, rate, boundary='block'):
     trans_rate_matrix = {}
     for i in range(state_num):
         if i not in trans_rate_matrix:
             trans_rate_matrix[i] = {}
-        if i < state_num - 1:
-            trans_rate_matrix[i][i+1] = rate
-        if i > 0:
+        if boundary == 'periodic' and i == 0:
+            trans_rate_matrix[i][state_num-1] = rate
+        else:
             trans_rate_matrix[i][i-1] = rate
+        if boundary == 'periodic' and i == state_num - 1:
+            trans_rate_matrix[i][0] = rate
+        else:
+            trans_rate_matrix[i][i+1] = rate
     return trans_rate_matrix
 
 def guess_trans_rate_matrix (energy_profile, diff_const):
@@ -101,17 +106,18 @@ def guess_trans_rate_matrix (energy_profile, diff_const):
     return trans_rate_matrix
 
 def modify_trans_rate_matrix (trans_rate_matrix, perted_sites, offsets = [19, 20, 21], scale=0.1):
+    new_matrix = copy.deepcopy(trans_rate_matrix)
     for perted_site in perted_sites:
         for offset in offsets:
             try:
-                trans_rate_matrix[perted_site+offset][perted_site+offset-1] = scale*trans_rate_matrix[perted_site+offset][perted_site+offset-1]
+                new_matrix[perted_site+offset][perted_site+offset-1] = scale*new_matrix[perted_site+offset][perted_site+offset-1]
             except:
                 pass
             try:
-                trans_rate_matrix[perted_site-offset][perted_site-offset+1] = scale*trans_rate_matrix[perted_site-offset][perted_site-offset+1]
+                new_matrix[perted_site-offset][perted_site-offset+1] = scale*new_matrix[perted_site-offset][perted_site-offset+1]
             except:
                 pass
-    return
+    return new_matrix
 
 ref_length = 225
 dyad_axis = ref_length/2
@@ -125,8 +131,9 @@ Control2 = load.load_files(fnames2, ref_length, dyad_axis, dyad_offset, filter_n
 
 #trans_rate_matrix = guess_trans_rate_matrix (Control2.energy_profile(), 10)
 
-state_num = ref_length
-trans_rate_matrix = uniform_trans_rate_matrix (state_num, rate=10)
+#state_num = ref_length
+state_num = 100
+trans_rate_matrix = uniform_trans_rate_matrix (state_num, rate=10, boundary='periodic')
 
 forward_list, backward_list = [] ,[]
 for i in range(state_num):
@@ -146,23 +153,41 @@ plt.plot(forward_list, '.')
 plt.plot(backward_list, '.')
 #plt.show()
 plt.close()
-    
-State_traces, Time_traces = kinetic_MC (trans_rate_matrix, 1, 100000, init_state=state_num/2)
-#display_traces (State_traces, Time_traces)
-dist1 = get_dist (State_traces, Time_traces, state_num, replica=0, time=None)
 
-st, ed = state_num/2, state_num/2 +1
-modify_trans_rate_matrix (trans_rate_matrix, perted_sites=range(st,ed), offsets = [19, 20, 21], scale=0.5)
-State_traces, Time_traces = kinetic_MC (trans_rate_matrix, 1, 100000, init_state=state_num/2)
-#display_traces (State_traces, Time_traces)
-dist2 = get_dist (State_traces, Time_traces, state_num, replica=0, time=None)
+st, ed = state_num/2, state_num/2 + 2
+#scale_list = [1.0 - 0.1*i for i in range(4)]
+#offset_list = [20 for i in range(4)]
 
+scale_list = [0.8 for i in range(4)]
+offset_list = [10*(i+1) for i in range(4)]
 
+matrix_list = []
+for i in range(4):
+    scale = scale_list[i]
+    offset = offset_list[i]
+    new_matrix = modify_trans_rate_matrix (trans_rate_matrix, perted_sites=range(st, ed), offsets = range(offset-1, offset+2), scale=scale)
+    matrix_list.append(new_matrix)
+
+dist_list = []
+for matrix in matrix_list:
+    State_traces, Time_traces = kinetic_MC (matrix, 1, 20000, init_state=state_num/2)
+    dist = get_dist (State_traces, Time_traces, state_num, replica=0, time=None)
+    dist_list.append(dist)
 
 fig = plt.figure()
-plt.plot(dist1)
-plt.plot(dist2)
-plt.yscale("log")
+uniform = 1.0/state_num
+for i in range(len(dist_list)):
+    dist = dist_list[i]
+    scale = scale_list[i]
+    offset = offset_list[i]
+    plt.plot(dist, label='scale:'+str(scale)+', offset:'+str(offset))
+    plt.axhline(y=uniform, linestyle = '--', color='k', alpha=0.25)
+#plt.yscale("log")
+plt.title("Kinetic Monte Carlo simulation")
+plt.xlabel("Position")
+plt.ylabel("Probability")
+plt.ylim([0.0, uniform*3.0])
 plt.axvspan(st, ed-1, alpha=0.5, color='red')
+plt.legend()
 plt.show()
 plt.close()

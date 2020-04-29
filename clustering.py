@@ -91,13 +91,13 @@ name_key_slider['Control1'] = Control1
 name_key_slider['Control2'] = Control2
 
 # PolyA library
-for condition in []:
+for condition in ['old']:
     if condition == 'old':
         path = "/home/spark159/../../media/spark159/sw/AscanlibFinal/"
     elif condition == 'new':
         #path = "/home/spark159/../../media/spark159/sw/all_slide_seq_data/"
         path = "/home/spark159/../../media/spark159/sw/AscanlibFinal/"
-    for time in [5]:
+    for time in [0]:
         fname = "%slib_%s_%s_%srep" % ('polyA', condition, time, 1)
         if condition =='old' and time == 0:
             sort_fname = "Ascan0_S1_L001_R.oldsort"
@@ -119,13 +119,13 @@ for condition in []:
 
 # Mismatch/Indel library
 path = "/home/spark159/../../media/spark159/sw/mmlibIDlibFinal/"
-for mtype in ['M']:
+for mtype in []:
     if mtype == 'M':
         library_type = 'mm'
     elif mtype in ['I', 'D']:
         library_type = 'ID'
     for condition in ['bubble']:
-        for time in [5]:
+        for time in [0]:
             for rep in [1]:
                 fname = "%slib_%s_%s_%srep" % (library_type, condition, time, rep)
                 try:
@@ -615,22 +615,28 @@ for name in name_key_slider:
         ax2.set_ylabel("Probability change")
         ax1.set_xlabel("Position (bp)")
         plt.title("size " + str(size))
+        plt.tight_layout()
         #plt.show()
         plt.close()
 
     # plot total data variation for each position
+    #color_list = np.linspace(0, 1, num=len(all_pos_changes))
+    #cmap = cm.get_cmap("viridis")
     fig = plt.figure()
     ax1 = plt.gca()
     ax1.plot(control_map, 'k--')
     ax2 = ax1.twinx()
-    for pos in sorted(all_pos_changes.keys()):
+    for i in range(len(all_pos_changes)):
+        pos = sorted(all_pos_changes.keys())[i]
         changes = all_pos_changes[pos]
         ax2.plot([pos]*len(changes), changes, '.', alpha=0.5)
+        #ax2.plot([pos]*len(changes), changes, '.', alpha=0.5, color=cmap(color_list[i]))
     ax1.set_ylabel("WT probability")
     ax2.set_ylabel("Probability change")
     ax1.set_xlabel("Position (bp)")
     plt.title("Signal variation by position")
-    #plt.show()
+    plt.tight_layout()
+    plt.show()
     plt.close()
 
     # plot total data variance for each position
@@ -647,8 +653,9 @@ for name in name_key_slider:
     ax1.set_ylabel("WT probability")
     ax2.set_ylabel("Variance")
     ax1.set_xlabel("Position (bp)")
-    plt.title("Signal variation by position")
-    #plt.show()
+    plt.title("Signal variance by position")
+    plt.tight_layout()
+    plt.show()
     plt.close()    
 
     # sorting the position by data variance
@@ -666,30 +673,35 @@ for name in name_key_slider:
     all_ordered_pos = [pos for var, pos in sorted(variance_pos, cmp=tuple_cmp, reverse=True)]
 
     # plot nucleosome positioning energy perturbation map
-    #fig = plt.figure()
-    for pos in sorted(all_ordered_pos[:3]):
+    color_list = np.linspace(0, 1, num=len(size_dyad_shl_energies))
+    cmap = cm.get_cmap("jet")
+    marker_list = ["o", "x", "d", ">", "s"]
+    for pos in sorted(all_ordered_pos[:1]):
         fig = plt.figure()
-        for size in sorted(size_dyad_shl_energies.keys()):
+        for i in range(len(size_dyad_shl_energies)):
+            size = sorted(size_dyad_shl_energies.keys())[i]
             shl_energies = size_dyad_shl_energies[size][pos + NCP_len/2]
             X, Y = [], []
             for shl in sorted(shl_energies.keys()):
                 X.append(shl)
                 Y.append(np.mean(shl_energies[shl]))
-                #X.append(pos+shl)
-                #Y.append(np.mean(shl_energies[shl]))
-            plt.plot(X, Y, '.--', label="size " + str(size))
+            p = plt.plot(X, Y, '.', markersize=4, color=cmap(color_list[i]), label="size " + str(size))
+            #p = plt.plot(X, Y, '.', markersize=4, label="size " + str(size))
+            plt.plot(X, Y, '-', alpha=0.5, color=p[0].get_color())
         plt.axvline(x=0, linestyle='--', color='k')
         plt.axhline(y=0, linestyle='--', color='k')
         for tick in [-60, -40, -20, -10, 0, 10, 20, 40, 60]:
             plt.axvline(x=tick, linestyle = '--', linewidth=1, color='k', alpha=0.25)
         plt.title("Position " + str(pos + NCP_len/2))
         plt.xlim([-80, 80])
-        plt.legend()
+        plt.xlabel("SHL coordinate")
+        plt.ylabel("$\Delta$ E")
+        leg = plt.legend()
+        for lh in leg.legendHandles:
+            lh._legmarker.set_markersize(5)
+        plt.tight_layout()
         plt.show()
-        plt.close()
-    #plt.show()
-    #plt.close()
-        
+        plt.close()        
     
     """
     min_energy, max_energy = None, None
