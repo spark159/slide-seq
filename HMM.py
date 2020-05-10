@@ -101,7 +101,7 @@ class MarkovModel:
         return score
 
     # Calculate the "single" NCP positioning probability profile of given sequence
-    def single_profile (self, seq):
+    def single_logprob_profile (self, seq):
         profile = []
         total = 0.0
         for i in range(len(seq)):

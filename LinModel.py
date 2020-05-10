@@ -277,7 +277,7 @@ class ShapeLinearModel:
 
     def train (self,
                alpha=0.5,
-               k_fold=10,
+               k_fold=5,
                sym=True,
                graph=False):
         
@@ -899,11 +899,14 @@ class SeqLinearModel:
                     st = boundoff + centeroff + k*seqlen
                 bseq = seq[st:st+seqlen]
                 num_pos = Amer_len(bseq)
-                count = 0
+                #count = 0
+                score = 0.0
                 for num, pos in num_pos.items():
                     if num >=5:
-                        count += len(pos)
-                row.append(count)
+                        #count += len(pos)
+                        score = (num**2)*len(pos) 
+                #row.append(count)
+                row.append(score)
             if sym:
                 sym_row = [row[i] + row[::-1][i] for i in range(bnum/2)]
                 if bnum % 2 != 0:
@@ -982,7 +985,7 @@ class SeqLinearModel:
                ref_key=None,
                dPolyA=False,
                alpha=0.5,
-               k_fold=10,
+               k_fold=5,
                sym=True,
                graph=False):
 
@@ -1327,6 +1330,7 @@ class SeqLinearModel:
         return Ypred[0]
 
     def predict(self, target_seq, bound=0, sym=True):
+        assert len(target_seq) >= self.NCPlen
         seq_list = []
         pos_list = []
         for i in range(self.NCPlen/2+bound, len(target_seq)-self.NCPlen/2-bound):
@@ -2081,7 +2085,7 @@ class LinSliderModel:
                ref_key=None,
                dPolyA=False,
                alpha=0.5,
-               k_fold=10,
+               k_fold=5,
                graph=False):
 
         self.MM_orders, self.Kmer_k_b, = MM_orders, Kmer_k_b

@@ -924,8 +924,20 @@ class EnergyModel:
         #pred_prob = norm(pred_prob)
         return Ypred[0]
 
+    def energy_predict_profile(self, seq):
+        profile = []
+        assert len(seq) >= self.NCPlen
+        for i in range(len(seq)):
+            if i < self.NCPlen/2:
+                profile.append(sys.maxint)
+            elif i >= len(seq) - self.NCPlen/2:
+                profile.append(sys.maxint)
+            else:
+                profile.append(self.energy_predict(seq[i-self.NCPlen/2:i+self.NCPlen/2+1]))
+        return profile
 
-    def _predict(self, seq, bound=0):
+    def _predict(self, seq, bound=0, scale=1.0):
+        assert len(seq) >= self.NCPlen
         seq_list = []
         pos_list = []
         for i in range(self.NCPlen/2+bound, self.templatelen-self.NCPlen/2-bound):
@@ -951,7 +963,7 @@ class EnergyModel:
             if key.startswith('GC'):
                 GC_b.append(int(key[2:]))
             if key.startswith('Harmonic'):
-                Harmonic = True
+                Harmonic = (len(seq) == self.templatelen)
             if key.startswith('dPolyA'):
                 lmin = min(data_dict['dPolyA'].keys())
                 lmax = max(data_dict['dPolyA'].keys())
@@ -1001,40 +1013,20 @@ class EnergyModel:
                 var_list[i] += dPolyA_vars[i]
 
         Ypred = self.reg.predict(var_list)
-        Ypred = [ value[0] for value in Ypred]
-        pred_prob = [np.exp(-value) for value in Ypred]
+        Ypred = [value[0] for value in Ypred]
+        pred_prob = [np.exp(-scale*value) for value in Ypred]
         pred_prob = norm(pred_prob)
         return pred_prob
 
-    def predict(self, key_slider, scale=2, bound=0):
-        keys = random.sample(key_slider.keys(), 30)
-        key_slider2 = {}
-        for key in keys:
-            #win,loc = key.split('-')
-            #loc = int(loc)
-            #st,ed = loc, loc+len(win)
+    def predict(self, key_slider, bound=0, scale=2.0):
+        pred_key_slider = {}
+        padding = [0.0]*(self.NCPlen/2 + bound)
+        for key in key_slider.keys():
             seq = key_slider[key].seq
-            KDE = norm(key_slider[key].dyadmap)
-            prob = list(np.asarray(self._predict(seq, bound=bound))**scale)
-            prob = norm(prob)
-            prob = ([0.0]*(self.NCPlen/2)) +  prob  + ([0.0]*(self.NCPlen/2))
-            #fig = plt.figure()
-            #plt.plot(KDE, label='exp')
-            #plt.plot(prob, label='pre')
-            #plt.axvspan(st, ed-1, alpha=0.5, color='red')
-            #plt.legend()
-            #plt.show()
-            #plt.close()
-            key_slider2[key] = Slider(key,'','','','',seq,prob,'','')
-        sample_list = [keys]
-        graph_edit.plot_map(key_slider, sample_list, norm_choice=True, obs_func = Slider.get_dyadmap, draw = 'polyA', slicing=0, note='Exp')
-        graph_edit.plot_map(key_slider2, sample_list, norm_choice=True, obs_func = Slider.get_dyadmap, draw = 'polyA', slicing=0, note='Pred')
-
-        #sample_list = [[key] for key in keys]
-        #graph_edit.plot_signal(key_slider, sample_list, norm_choice=True, obs_func = Slider.get_dyadmap, draw = 'polyA', slicing=0, note='Exp')
-        #graph_edit.plot_signal(key_slider2, sample_list, norm_choice=True, obs_func = Slider.get_dyadmap, draw = 'polyA', slicing=0, note='Pred')
-
-        return None
+            prob = padding + self._predict(seq, bound=bound, scale=scale) + padding
+            dyadmap = [value*100 for value in prob]
+            pred_key_slider[key] = Slider(key, len(seq), len(seq)/2, 52, 52, seq, dyadmap, [], [], None, None, None, None)
+        return pred_key_slider
         
 
     def display(self,

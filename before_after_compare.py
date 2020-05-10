@@ -74,7 +74,7 @@ def plot_shape_spectrum(group_freq, bound=0, note=""):
         #plt.show()
         plt.close()
 
-
+"""
 key_slider1 = pickle.load(open("slider1.p", "rb"))
 key_slider2 = pickle.load(open("slider2.p", "rb"))
 slide_seq_list1, slide_score_list1, slide_count_list1, slide_shape_list1 = get_SeqScoreCountShape_Slider(key_slider1, "Plusone_shape/phpIpl6Te", bound=2)
@@ -88,6 +88,17 @@ slide_seq_m2.report([1], [2,1], 1, 1, None)
 
 slide_freq1 = slide_seq_m1.freq
 slide_freq2 = slide_seq_m2.freq
+"""
+
+# load model
+with open("plusonelib_new_0_model.pickle", "rb") as f:
+    m1 = pickle.load(f)
+with open("plusonelib_new_30_model.pickle", "rb") as f:
+    m2 = pickle.load(f)
+
+slide_freq1 = m1.coeff
+slide_freq2 = m2.coeff
+
 
 freq_Kmer2 = []
 for Kmer, freq in slide_freq2['Kmer0'].items():
@@ -124,7 +135,7 @@ plt.legend()
 plt.ylabel("Fold change (%)")
 plt.title("(Chd1-HS)/HS (%)")
 plt.savefig('dinfreqchange_' + "slide" + '.png')
-#plt.show()
+plt.show()
 plt.close()
 
 freq_MM1_1 = slide_freq1['MM1']

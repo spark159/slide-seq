@@ -25,15 +25,24 @@ filenames2 = ["/home/spark159/../../media/spark159/sw/all_slide_seq_data/Plslib-
 #pickle.dump(model1, open("model1.p", "wb"))
 #pickle.dump(model2, open("model2.p", "wb"))
 
-model1 = pickle.load(open("model1.p", "rb"))
-model2 = pickle.load(open("model2.p", "rb"))
+#model1 = pickle.load(open("model1.p", "rb"))
+#model2 = pickle.load(open("model2.p", "rb"))
 
-model1.report(MM_orders=False, Kmer_k_b=[2, 1], PolyA_b=False, GC_b=False, Harmonic=False)
-model2.report(MM_orders=False, Kmer_k_b=[2, 1], PolyA_b=False, GC_b=False, Harmonic=False)
+#model1.report(MM_orders=False, Kmer_k_b=[2, 1], PolyA_b=False, GC_b=False, Harmonic=False)
+#model2.report(MM_orders=False, Kmer_k_b=[2, 1], PolyA_b=False, GC_b=False, Harmonic=False)
+
+# load model
+with open("plusonelib_new_0_model.pickle", "rb") as f:
+    model1 = pickle.load(f)
+with open("plusonelib_new_30_model.pickle", "rb") as f:
+    model2 = pickle.load(f)
 
 # position independent dinucleotide frequency
-freq1 = model1.freq['Kmer0']
-freq2 = model2.freq['Kmer0']
+#freq1 = model1.freq['Kmer0']
+#freq2 = model2.freq['Kmer0']
+freq1 = model1.coeff['Kmer0']
+freq2 = model2.coeff['Kmer0']
+
 
 freq_Kmer1, freq_Kmer2 = [], []
 for Kmer, freq in freq1.items():
@@ -54,7 +63,7 @@ for freq, kmer in freq_Kmer2:
 fig = plt.figure()
 plt.plot(range(len(freqs2)), freqs2, 'rx-', label='Chd1 Sliding')
 plt.plot(range(len(freqs1)), freqs1, 'bx-', label='Heat Shift')
-plt.xticks(range(len(freqs2)), Kmers2)
+plt.xticks(range(len(freqs2)), Kmers2, rotation=90)
 plt.ylabel("Relative frequency")
 plt.legend()
 plt.show()

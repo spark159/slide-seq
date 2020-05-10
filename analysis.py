@@ -279,8 +279,8 @@ def Kmeans(dic, cluster_num, sample_list=None, type_targets=[None, []]):
         X = []
         for key in key_list:
             X.append(dic[key])
-        #y = sklearn.cluster.KMeans(init='k-means++', n_init=10, n_clusters = cluster_num, max_iter = 10000).fit_predict(np.asarray(X))
-        y = sklearn.cluster.DBSCAN().fit_predict(np.asarray(X))
+        y = sklearn.cluster.KMeans(init='k-means++', n_init=10, n_clusters = cluster_num, max_iter = 10000).fit_predict(np.asarray(X))
+        #y = sklearn.cluster.DBSCAN().fit_predict(np.asarray(X))
         #print y
         #y = sklearn.cluster.SpectralClustering(n_clusters = cluster_num).fit_predict(np.asarray(X))
         #model = sklearn.cluster.AgglomerativeClustering(n_clusters=cluster_num, linkage='ward').fit(np.asarray(X))

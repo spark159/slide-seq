@@ -39,15 +39,15 @@ NCP_len = 147
 name_key_slider = {}
 
 # 601 control data
-fnames1 = ["/home/spark159/../../media/spark159/sw/AscanlibFinal/601_before_.combined.sort"]
-fnames2 = ["/home/spark159/../../media/spark159/sw/AscanlibFinal/601_after_.combined.sort"]
+fnames1 = ["/home/spark159/../../media/spark159/sw/polyAlibFinal/601_before_.combined.sort"]
+fnames2 = ["/home/spark159/../../media/spark159/sw/polyAlibFinal/601_after_.combined.sort"]
 Control1 = load.load_files(fnames1, ref_length, dyad_axis, dyad_offset, filter_num = 10, fill=None)
 Control2 = load.load_files(fnames2, ref_length, dyad_axis, dyad_offset, filter_num = 10, fill=None)
 name_key_slider['Control1'] = Control1
 name_key_slider['Control2'] = Control2
 
 # PolyA library
-for condition in ['old']:
+for condition in []:
     if condition == 'old':
         path = "/home/spark159/../../media/spark159/sw/AscanlibFinal/"
     elif condition == 'new':
@@ -94,6 +94,29 @@ for mtype in []:
                 assert fname not in name_key_slider
                 name_key_slider[fname] = key_slider
 
+# Plusone library
+path = "/home/spark159/../../media/spark159/sw/all_slide_seq_data/"
+for condition in ['new:corrected']:
+    for time in [0, 30]:
+        fname = "%slib_%s_%s" % ('plusone', condition, time)
+        if condition =='old' and time == 0:
+            sort_fname = "plusone-0_S1_L001_R.sort"
+        elif condition == 'old' and time == 30:
+            sort_fname = "plusone-30_S2_L001_R.sort"
+        elif condition == 'new' and time == 0:
+            sort_fname = "Plslib-HS_S1_L001_R.sort"
+        elif condition == 'new' and time == 30:
+            sort_fname = "Plslib-HS-30min_S2_L001_R.sort"
+        try:
+            with open(fname + ".pickle", "rb") as f:
+                key_slider = pickle.load(f)
+        except:
+            key_slider = load.load_files([path +  sort_fname], ref_length, dyad_axis, dyad_offset, filter_num = 10, fill=None, load_ref="/home/spark159/../../media/spark159/sw/plusonelibFinal/plusonelib.ref")
+            with open(fname + ".pickle", "wb") as f:
+                pickle.dump(key_slider, f)
+        assert fname not in name_key_slider
+        name_key_slider[fname] = key_slider
+
 # key selection
 name_keys = {}
 for name in name_key_slider:
@@ -113,12 +136,14 @@ for name in name_key_slider:
             loc, mtype, nts = key.split('-')
             if len(nts) < 1:
                 continue
-            if len(nts) > 20:
+            if len(nts) > 15:
                 continue
-            keys.append(key)        
+            keys.append(key)
     else:
         keys = key_slider.keys()
-    name_keys[name] = sorted(keys, cmp=key_cmp)
+    if not name.startswith("plusone"):
+        keys = sorted(keys, cmp=key_cmp)
+    name_keys[name] = keys
 
 # noise subtraction
 name_strand_threshold = {"Control2":{"top":0.05, "bott":0.02}, "mmlib_control_5_1rep":{"top":0.02, "bott":0.06}, "mmlib_control_5_2rep":{"top":0.04, "bott":0.085}, "polyAlib_old_5_1rep":{"top":0.02, "bott":0.06}}
@@ -149,8 +174,8 @@ for name in name_key_slider:
 
 
 # get average signal
-graph.plot_signal(Control1, note='601_before')
-graph.plot_signal(Control2, note='601_after')
+#graph.plot_signal(Control1, note='601_before')
+#graph.plot_signal(Control2, note='601_after')
 #graph.plot_signal(key_slider1, note='mmlib_control_0_1rep')
 #graph.plot_signal(key_slider2, note='mmlib_control_0_2rep')
 #graph.plot_signal(key_slider3, note='mmlib_control_5_1rep')
@@ -171,13 +196,20 @@ graph.plot_signal(Control2, note='601_after')
 #graph.plot_map(key_slider7, sample_list, norm_choice=True, draw_key=True, note='_mmlib_bubble_5_1rep')
 #graph.plot_map(key_slider8, sample_list, norm_choice=True, draw_key=True, note='_mmlib_bubble_5_2rep')
 
+sample_mode = "r:30"
+sample_list = sample.sampling(name_key_slider['plusonelib_new:corrected_0'], sample_mode)
+sub_sample_list = []
+for index in random.sample(range(30),5):
+    print index
+    sub_sample_list = [[sample_list[0][index]]]
 
-#for name, key_slider in name_key_slider.items():
+for name, key_slider in name_key_slider.items():
+    if name.startswith('Control'):
+        continue
     #sample_mode = "polyA:" + "-".join([str(size) for size in range(3, 16)])
-    #sample_list = sample.sampling(key_slider, sample_mode)
-    #graph_edit.plot_map(key_slider, sample_list, True, Slider.peak_signal, draw = "key", slicing=0, note='_' + name)
+    graph_edit.plot_map(key_slider, sample_list, True, Slider.peak_signal, slicing=0, note='_' + name)
     #sample_list = [[choice] for choice in random.sample(sample_list[0], 10)]
-    #graph_edit.plot_signal (key_slider, sample_list, True, Slider.get_dyadmap, mean_choice=False, draw = "key", slicing = 0, note = "_" + name)
+    graph_edit.plot_signal (key_slider, sub_sample_list, True, Slider.get_dyadmap, mean_choice=False, slicing = 0, note = "_" + name)
 
 """
 # draw data on pdf

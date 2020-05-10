@@ -344,7 +344,7 @@ class Slider:
             return 0.0
         return sig
 
-    def peak_signal (self, choice='dyad', num=5, broden=1):
+    def peak_signal (self, choice='dyad', num=15, broden=1):
         if choice == 'dyad':
             map = self.dyadmap
         elif choice == 'left':

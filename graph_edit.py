@@ -155,9 +155,9 @@ def plot_map(key_slider, sample_list, norm_choice, obs_func, draw = None, slicin
             if draw:
                 A,B,C,D = 4, 8, 0, 2
 
-        # temporal
-        A,B,C,D = 4, 8, 0, 2
-        D = 6
+        # temporal for 601 based library
+        #A,B,C,D = 4, 8, 0, 2
+        #D = 6
 
         for j in range(len(key_list)):
             key = key_list[j]
@@ -215,7 +215,8 @@ def plot_map(key_slider, sample_list, norm_choice, obs_func, draw = None, slicin
         ax.spines['right'].set_visible(False)
         plt.tick_params(top='off', left='off', right='off', labelleft='off', labelbottom='on')
         #cmap = plt.cm.bwr
-        cmap = plt.cm.YlGnBu
+        #cmap = plt.cm.YlGnBu
+        cmap = plt.cm.magma_r
         #cmap = plt.cm.jet
         if draw:
             cmap.set_bad((1, 0, 0, 1))

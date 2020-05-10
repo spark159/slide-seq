@@ -66,9 +66,35 @@ k = 3
 # offset length
 offset = 52
 
+
+# load library
+name_key_slider = {}
+path = "/home/spark159/../../media/spark159/sw/all_slide_seq_data/"
+for condition in ['new']:
+    for time in [0, 30]:
+        fname = "%slib_%s_%s" % ('plusone', condition, time)
+        if condition =='old' and time == 0:
+            sort_fname = "plusone-0_S1_L001_R.sort"
+        elif condition == 'old' and time == 30:
+            sort_fname = "plusone-30_S2_L001_R.sort"
+        elif condition == 'new' and time == 0:
+            sort_fname = "Plslib-HS_S1_L001_R.sort"
+        elif condition == 'new' and time == 30:
+            sort_fname = "Plslib-HS-30min_S2_L001_R.sort"
+        try:
+            with open(fname + ".pickle", "rb") as f:
+                key_slider = pickle.load(f)
+        except:
+            key_slider = load.load_files([path +  sort_fname], ref_length, dyad_axis, dyad_offset, filter_num = 10, fill=None, load_ref="/home/spark159/../../media/spark159/sw/plusonelibFinal/plusonelib.ref")
+            with open(fname + ".pickle", "wb") as f:
+                pickle.dump(key_slider, f)
+        assert fname not in name_key_slider
+        name_key_slider[fname] = key_slider
+
+
 # read slider data
-key_slider1 = pickle.load(open("/home/../../media/spark159/sw/dataforslide/slider1.p", "rb"))
-key_slider2 = pickle.load(open("/home/../../media/spark159/sw/dataforslide/slider2.p", "rb"))
+key_slider1 = name_key_slider["plusonelib_new_0"]
+key_slider2 = name_key_slider["plusonelib_new_30"]
 
 keys = list(set(key_slider1.keys()) & set(key_slider2.keys()))
 keys = sorted(keys, cmp=key_cmp)
@@ -291,17 +317,17 @@ plt.legend()
 plt.close()
 
 
-# build linear model from collected kmers
-seq_list = []
-score_list = []
-count_list = []
-for kmer, freq in kmer_freq.items():
-    seq_list.append(kmer)
-    score_list.append(freq)
-    count_list.append(freq)
+## build linear model from collected kmers
+#seq_list = []
+#score_list = []
+#count_list = []
+#for kmer, freq in kmer_freq.items():
+#    seq_list.append(kmer)
+#    score_list.append(freq)
+#    count_list.append(freq)
 
-m = LinModel.SeqLinearModel(seq_list, score_list, count_list)
-m.train(MM_orders=[1], Kmer_k_b=None, PolyA_b=False, GC_b=False, Harmonic=False, sym=False)
+#m = LinModel.SeqLinearModel(seq_list, score_list, count_list)
+#m.train(MM_orders=[1], Kmer_k_b=None, PolyA_b=False, GC_b=False, Harmonic=False, sym=False)
 
 
 # estimate the corrected dyad signal
@@ -326,8 +352,10 @@ for key in keys:
             b = kmer_freq[bott_kmer]
             #t = m.score_predict(top_kmer)
             #b = m.score_predict(bott_kmer)
-            signal1 = float(top_cutmap1[i-offset])/t + float(bott_cutmap1[i+offset])/(g*b)
-            signal2 = float(top_cutmap2[i-offset])/t + float(bott_cutmap2[i+offset])/(g*b)  
+            #signal1 = float(top_cutmap1[i-offset])/t + float(bott_cutmap1[i+offset])/(g*b)
+            #signal2 = float(top_cutmap2[i-offset])/t + float(bott_cutmap2[i+offset])/(g*b)
+            signal1 = float(top_cutmap1[i-offset])/t + float(bott_cutmap1[i+offset])/b
+            signal2 = float(top_cutmap2[i-offset])/t + float(bott_cutmap2[i+offset])/b
         new_dyadmap1.append(signal1)
         new_dyadmap2.append(signal2)
 
@@ -336,10 +364,10 @@ for key in keys:
     dyadmap1 = norm(slider1.dyadmap)
     dyadmap2 = norm(slider2.dyadmap)
 
-    #key_slider1[key].dyadmap = new_dyadmap1
-    #key_slider2[key].dyadmap = new_dyadmap2
-    key_slider1[key].dyadmap = dyadmap1
-    key_slider2[key].dyadmap = dyadmap2
+    key_slider1[key].dyadmap = new_dyadmap1
+    key_slider2[key].dyadmap = new_dyadmap2
+    #key_slider1[key].dyadmap = dyadmap1
+    #key_slider2[key].dyadmap = dyadmap2
 
 
     fig = plt.figure()
@@ -355,12 +383,18 @@ for key in keys:
     plt.legend()
     #plt.show()
     plt.close()
-    
+
+# save new slider with new dyadmap
+with open("plusonelib_new:corrected_0" + ".pickle", "wb") as f:
+    pickle.dump(key_slider1, f)
+with open("plusonelib_new:corrected_30" + ".pickle", "wb") as f:
+    pickle.dump(key_slider2, f)    
     
 # check the correction by checking nucleosome positioning sequences
 seq_list = []
 score_list1, count_list1 = [], []
 score_list2, count_list2 = [], []
+energy_list1, energy_list2 = [], []
 
 for key in keys:
     dyadmap1 = key_slider1[key].dyadmap
@@ -370,18 +404,35 @@ for key in keys:
         NCPseq = seq[i - NCPlen/2 : i + NCPlen/2 + 1]
         score1, score2 = dyadmap1[i], dyadmap2[i]
         count1, count2 = dyadmap1[i], dyadmap2[i]
+        energy1, energy2 = -np.log(score1 + 10**-15), -np.log(score2 + 10**-15)
         seq_list.append(NCPseq)
         score_list1.append(score1)
         score_list2.append(score2)
         count_list1.append(count1)
         count_list2.append(count2)
+        energy_list1.append(energy1)
+        energy_list2.append(energy2)
+
+"""
+m1 = LinModel.SeqLinearModel(seq_list, energy_list1, count_list1)
+m1.train(MM_orders=[1], Kmer_k_b=[5, 3], PolyA_b=False, dPolyA=False, GC_b=False, Harmonic=False, sym=True, graph=False, k_fold=2)
+with open("plusonelib_new_0_model.pickle", "wb") as f:
+    pickle.dump(m1, f)
+
+m2 = LinModel.SeqLinearModel(seq_list, energy_list2, count_list2)
+m2.train(MM_orders=[1], Kmer_k_b=[5, 3], PolyA_b=False, dPolyA=False, GC_b=False, Harmonic=False, sym=True, graph=False, k_fold=2)
+with open("plusonelib_new_30_model.pickle", "wb") as f:
+    pickle.dump(m2, f)
+
+        
 
 m1 = LinModel.SeqLinearModel(seq_list, score_list1, count_list1)
 m1.report(MM_orders=[1], Kmer_k_b=False, PolyA_b=False, GC_b=False, Harmonic=False, sym=True)
+
 m2 = LinModel.SeqLinearModel(seq_list, score_list2, count_list2)
 m2.report(MM_orders=[1], Kmer_k_b=False, PolyA_b=False, GC_b=False, Harmonic=False, sym=True)
 
-"""
+
 group_freq1 = m1.spectrum(MM_orders=[1], Kmer_k_b=False, PolyA_b=False, GC_b=False, Harmonic=False, sym=True)
 for i in range(len(group_freq1)):
     freq = group_freq1[i]
