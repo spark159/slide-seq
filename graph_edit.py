@@ -159,6 +159,10 @@ def plot_map(key_slider, sample_list, norm_choice, obs_func, draw = None, slicin
         #A,B,C,D = 4, 8, 0, 2
         #D = 6
 
+        # temporal for yeast library
+        A,B,C,D = 4, 8, 2, 2
+        D = 6
+
         for j in range(len(key_list)):
             key = key_list[j]
             slider = key_slider[key]
@@ -178,7 +182,7 @@ def plot_map(key_slider, sample_list, norm_choice, obs_func, draw = None, slicin
                 num_pos = slider.Amer_len_detail()
                 draw_map = np.zeros(len(obs_map))
                 for num, pos in num_pos.items():
-                    if num >= 3:
+                    if num >= 5:
                         for loc in pos:
                             draw_map[loc:loc+num] = [np.nan] * num
 
@@ -216,12 +220,15 @@ def plot_map(key_slider, sample_list, norm_choice, obs_func, draw = None, slicin
         plt.tick_params(top='off', left='off', right='off', labelleft='off', labelbottom='on')
         #cmap = plt.cm.bwr
         #cmap = plt.cm.YlGnBu
-        cmap = plt.cm.magma_r
+        cmap = plt.cm.YlOrBr
+        #cmap = plt.cm.magma_r
         #cmap = plt.cm.jet
         if draw:
             cmap.set_bad((1, 0, 0, 1))
         #ax.imshow(obs_img, cmap=cmap, interpolation='none', vmin=-0.15, vmax=0.15)
-        ax.imshow(obs_img, cmap=cmap, interpolation='none')
+        # temporal for yeast
+        ax.imshow(obs_img, cmap=cmap, interpolation='none', vmin=0, vmax=1.2)
+        #ax.imshow(obs_img, cmap=cmap, interpolation='none')
         plt.savefig('obs_cond' + str(i+1) + note + '.png', dpi=1500)
         plt.close()
 

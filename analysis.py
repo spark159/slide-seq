@@ -256,7 +256,6 @@ def get_peaks(key_slider, left_cut_peak_num, right_cut_peak_num, dyad_peak_num, 
 def Kmeans(dic, cluster_num, sample_list=None, type_targets=[None, []]):
     if sample_list == None:
         sample_list = [dic.keys()]
-        
     key_cdx_list, cdx_key_list = [], []
     type, targets = type_targets
     for u in range(len(sample_list)):

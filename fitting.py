@@ -32,10 +32,12 @@ def read_data (fname):
         sample_times[name].append(time)
     return sample_rep_values, sample_times
 
-sample_rep_values, sample_times = read_data("/home/spark159/../../media/spark159/sw/dataforslide/0N80_NCP_sliding_2AP.csv")
+sample_rep_values, sample_times = read_data("/home/spark159/script/slide-seq/0N80_NCP_sliding_1AP.csv")
 maxtime = np.max(sample_times.values())
 
-names = ['601 0N80', 'Top2AP 0N80', 'Bott2AP 0N80', 'Both2AP 0N80']
+#names = ['601 0N80', 'Top1AP 0N80', 'Bott1AP 0N80']
+names = ['601 0N80', 'Top1AP 0N80', 'Bott1AP 0N80', 'Both1AP 0N80']
+#names = ['601 0N80', 'Top2AP 0N80', 'Bott2AP 0N80', 'Both2AP 0N80']
 #names = ['601 0N80']
 #names = ['601 0N80', 'A1L 0N80', 'A1R 0N80', 'A1LM 0N80', 'A1RM 0N80']
 #names = ['601 0N80', 'A2L 0N80', 'A2R 0N80', 'A2LM 0N80', 'A2RM 0N80']
@@ -56,7 +58,8 @@ for i in range(len(names)):
     X = sample_times[name]
     for j in range(len(rep_values)):
         Y = rep_values[j]
-        popt, pcov = curve_fit(func1, X, Y, bounds=([-np.inf, 0, 0], [0, np.inf, np.inf]))
+        #popt, pcov = curve_fit(func1, X, Y, bounds=([-np.inf, 0, 0], [0, np.inf, np.inf]))
+        popt, pcov = curve_fit(func1, X, Y)
         sample_ks[name].append(popt[1])
         #popt, pcov = curve_fit(func2, X, Y, bounds=([-np.inf, 0, -np.inf, 0, 0], [0, np.inf, 0, np.inf, np.inf]))
         print name, j
@@ -100,26 +103,29 @@ for name in names:
     t_stds.append(t_std)
     
 fig = plt.figure()
-k_means[-2], k_means[-1] = 0, 0
-k_stds[-2], k_stds[-1] = 0, 0 
+k_means[-1] = 0
+k_stds[-1] = 0 
+#k_means[-2], k_means[-1] = 0, 0
+#k_stds[-2], k_stds[-1] = 0, 0 
 #plt.bar(range(len(k_means)), k_means, width=0.5, yerr=k_stds, color=colors)
 plt.barh(range(len(k_means)), k_means, xerr=k_stds, color=colors, height=0.5)
 plt.title("0N80 Sliding")
 #plt.yscale("log")
-#plt.xscale("log")
+plt.xscale("log")
 #plt.xticks(range(len(k_means)), names, rotation=30)
 plt.yticks(range(len(k_means)), names)
 #plt.ylabel("$k_{on} (min^{-1})$")
 plt.xlabel("$k_{on} (min^{-1})$")
 plt.gca().invert_yaxis()
+plt.xlim([None, 10])
 #plt.ylim([0.1, 10])
 plt.savefig("0N80_sliding_kons.png", bbox_inches='tight')
 #plt.show()
 plt.close()
 
 fig = plt.figure()
-#t_means[-1] = 0
-#t_stds[-1] = 0
+t_means[-1] = 0
+t_stds[-1] = 0
 plt.bar(range(len(t_means)), t_means, width=0.5, yerr=t_stds, color=colors)
 plt.title("0N80 Sliding")
 plt.yscale("log")

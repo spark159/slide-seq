@@ -10,6 +10,80 @@ def func2(x, a, b, c, d, e):
     return a*np.exp(-b*x)+c*np.exp(-d*x)+e
 
 def read_data (fname):
+    sample_field_data = {}
+    for line in open(fname):
+        if not line.strip():
+            continue
+        if line.startswith('@'):
+            name = line[1:].strip()
+            assert name not in sample_field_data
+            sample_field_data[name] = {}
+            continue
+        cols = line.strip().split('\t')
+        try:
+            cols = [float(col) for col in cols]
+        except:
+            fields = cols
+            continue
+        assert len(cols) == len(fields)
+        for i in range(len(fields)):
+            field, value = fields[i], cols[i]
+            if field not in sample_field_data[name]:
+                sample_field_data[name][field] = []
+            sample_field_data[name][field].append(value)
+    return sample_field_data
+
+sample_field_data = read_data("ADPcomp2.csv")
+
+for sample in sample_field_data:
+    field_data = sample_field_data[sample]
+    time_list = sample_field_data[sample]['time (sec)']
+    fig = plt.figure()
+    for field in field_data:
+        if field.startswith('time'):
+            continue
+        if field.endswith('std'):
+            continue
+        else:
+            note = field.split()[0]
+        plt.plot(time_list, field_data[note+' mean'], 'o-', label=note)
+        plt.errorbar(time_list, field_data[note+' mean'], yerr=field_data[note+' std'], fmt='.')
+    plt.legend()
+    plt.title(sample)
+    plt.ylim([-0.05, 0.85])
+    plt.xlabel("Time (sec)")
+    plt.ylabel("Fraction")
+    plt.show()
+    plt.close()
+
+    
+field_choices = ["unstable", "stable", "unbound"]
+for field_choice in field_choices:
+    fig = plt.figure()
+    for sample in sample_field_data:
+        field_data = sample_field_data[sample]
+        time_list = sample_field_data[sample]['time (sec)']
+        for field in field_data:
+            if field.startswith('time'):
+                continue
+            if field.endswith('std'):
+                continue
+            if field_choice and field.split()[0] != field_choice:
+                continue
+            else:
+                note = field.split()[0]
+            plt.plot(time_list, field_data[note+' mean'], 'o-', label= sample + '_' + note)
+            plt.errorbar(time_list, field_data[note+' mean'], yerr=field_data[note+' std'], fmt='.')
+    plt.legend()
+    plt.title(field_choice)
+    plt.xlabel("Time (sec)")
+    plt.ylabel("Fraction")
+    plt.show()
+    plt.close()
+
+        
+"""    
+def read_data (fname):
     sample_times = {}
     sample_values = {}
     sample_errors = {}
@@ -96,7 +170,7 @@ for k in range(len(names_list)):
     plt.show()
     plt.close()
 
-"""
+
 k_means, k_stds = [], []
 t_means, t_stds = [], []
 for name in names:
@@ -136,7 +210,5 @@ plt.ylim([0.1, 10])
 plt.savefig("0N80_sliding_times.png", bbox_inches='tight')
 #plt.show()
 plt.close()
-
-        
 
 """

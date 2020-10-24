@@ -22,12 +22,14 @@ def rev_comp (seq):
         nt = nt.upper()
         if nt == 'A':
             new_seq += 'T'
-        if nt == 'T':
+        elif nt == 'T':
             new_seq += 'A'
-        if nt == 'C':
+        elif nt == 'C':
             new_seq += 'G'
-        if nt == 'G':
+        elif nt == 'G':
             new_seq += 'C'
+        else:
+            new_seq += nt 
     return new_seq
 
 def is_pal (seq):
@@ -107,51 +109,62 @@ def GC_content(seq):
     for nt in seq:
         if nt in 'GC':
             num+=1
+        if nt not in 'ATCG':
+            num+=0.5
     return (num/float(len(seq)))*100
 
-def mask (seq, idxs, type="skips", space=""):
-    new_seq = ""
-    idxs = sorted(idxs)
-    if type == "skips":
-        new_seq += seq[0:idxs[0]] + space
-        for i in range(len(idxs)-1):
-            st, ed = idxs[i]+1, idxs[i+1]
-            if st == ed:
-                continue
-            new_seq += seq[st:ed] + space
-        new_seq += seq[idxs[-1]+1:]
-    elif type == "includes":
-        for i in range(len(idxs)-1):
-            idx = idxs[i]
-            next_idx = idxs[i+1]
-            new_seq += seq[idx]
-            if next_idx - idx > 1:
-                new_seq += space
-        new_seq += seq[next_idx] 
-    return new_seq
+#def mask (seq, idxs, type="skips", space=""):
+#    new_seq = ""
+#    idxs = sorted(idxs)
+#    if type == "skips":
+#        new_seq += seq[0:idxs[0]] + space
+#        for i in range(len(idxs)-1):
+#            st, ed = idxs[i]+1, idxs[i+1]
+#            if st == ed:
+#                continue
+#            new_seq += seq[st:ed] + space
+#        new_seq += seq[idxs[-1]+1:]
+#    elif type == "includes":
+#        for i in range(len(idxs)-1):
+#            idx = idxs[i]
+#            next_idx = idxs[i+1]
+#            new_seq += seq[idx]
+#            if next_idx - idx > 1:
+#                new_seq += space
+#        new_seq += seq[next_idx]
+#    assert len(new_seq) == len(seq)
+#    return new_seq
+
+def mask (seq, idxs, replace='-'):
+    nt_list = list(seq)
+    for idx in idxs:
+        nt_list[idx] = replace
+    return "".join(nt_list)
             
 
 class EnergyModel:
-    def __init__(self, key_slider, NCPlen=147, templatelen=225, bound=0, mask_type=None, mask_idxs=None, shape=False):
+    def __init__(self, key_slider, NCPlen=147, templatelen=225, bound=0, mask_idxs=None, shape=False):
         assert NCPlen % 2 != 0
         #self.key_slider = key_slider
         self.NCPlen = NCPlen
         self.templatelen = templatelen
         self.bound = bound
+        self.mask_idxs = mask_idxs
         self.nlogprob_list, self.seq_list, self.pos_list = [], [], []
         self.MGW_list, self.HelT_list, self.ProT_list, self.Roll_list = [], [], [], []
         self.key_list = sorted(key_slider.keys())
         for key in self.key_list:
             slider = key_slider[key]
-            energy_profile = slider.energy_profile()
-            #energy_profile = -np.log(slider.dyadmap)
+            #print slider.dyadmap
+            energy_profile = slider.energy_profile(scale=1000)
+            #energy_profile = -np.log(norm(np.asarray(slider.dyadmap)+sys.float_info.min))
             seq = slider.seq
             for i in range(self.NCPlen/2+bound, self.templatelen-self.NCPlen/2-bound):
                 nlogprob = energy_profile[i]
                 NCPseq = seq[i-self.NCPlen/2:i+self.NCPlen/2+1]
 
-                if mask_type:
-                    NCPseq = mask(NCPseq, mask_idxs, type=mask_type, space='G')
+                if self.mask_idxs:
+                    NCPseq = mask(NCPseq, self.mask_idxs, replace='-')
                     
                 self.nlogprob_list.append(nlogprob)
                 self.seq_list.append(NCPseq)
@@ -161,9 +174,6 @@ class EnergyModel:
                     self.HelT_list.append(slider.HelT[i-self.NCPlen/2:i+self.NCPlen/2+1])
                     self.ProT_list.append(slider.ProT[i-self.NCPlen/2:i+self.NCPlen/2+1])
                     self.Roll_list.append(slider.Roll[i-self.NCPlen/2:i+self.NCPlen/2+1])
-
-        if mask_type:
-            self.NCPlen = len(NCPseq)
             
         self.reg = None
         self.coeff = None
@@ -243,7 +253,10 @@ class EnergyModel:
         for seq in seq_list:
             for i in range(len(seq) - order):
                 nt = seq[i:i+1+order]
-                freq[i][nt] += 1.0 / sample_num
+                try:
+                    freq[i][nt] += 1.0 / sample_num
+                except:
+                    pass
         
         mean, std = [], []
         for ntdic in freq:
@@ -255,7 +268,10 @@ class EnergyModel:
             ntdic = freq[i]
             temp = {}
             for nt, value in ntdic.items():
-                temp[nt] = (value - mean[i]) / std[i]
+                if std[i] > 0:
+                    temp[nt] = (value - mean[i]) / std[i]
+                else:
+                    temp[nt] = np.nan
             stdz_freq.append(temp)
 
         return freq, sample_num, mean, std, stdz_freq
@@ -284,7 +300,10 @@ class EnergyModel:
                 bseq = seq[st:st+seqlen]                
                 for i in range(seqlen - knum + 1):
                     nt = bseq[i:i+knum]
-                    freq[k][nt] += 1.0 / sample_num
+                    try:
+                        freq[k][nt] += 1.0 / sample_num
+                    except:
+                        pass
 
         mean, std = [], []
         for ntdic in freq:
@@ -296,7 +315,10 @@ class EnergyModel:
             ntdic = freq[i]
             temp = {}
             for nt, value in ntdic.items():
-                temp[nt] = (value - mean[i]) / std[i]
+                if std[i] > 0:
+                    temp[nt] = (value - mean[i]) / std[i]
+                else:
+                    temp[nt] = np.nan
             stdz_freq.append(temp)
 
         return freq, sample_num, mean, std, stdz_freq
@@ -360,6 +382,33 @@ class EnergyModel:
             std.append(np.std(freq[k]))
         return freq, sample_num, mean, std
 
+    def kmer_pair_dist_prob(self, seq_list, knum, max_dist):
+        assert self.NCPlen - knum >= max_dist
+        pair_count = {}
+        pair_dist_prob = {}
+        for seq in seq_list:
+            pair_dist_count = {}
+            for i in range(len(seq)-knum):
+                for j in range(i+1, min(len(seq)-knum+1, i+max_dist+1)):
+                    kmer1 = seq[i:i+knum]
+                    kmer2 = seq[j:j+knum]
+                    dist = j - i
+                    pair = tuple(sorted([kmer1, kmer2]))
+                    if pair not in pair_dist_count:
+                        pair_dist_count[pair] = [0.0]*max_dist
+                    pair_dist_count[pair][dist-1] += 1
+            for pair in pair_dist_count:
+                if pair not in pair_dist_prob:
+                    pair_dist_prob[pair] = np.asarray([0.0]*max_dist)
+                pair_dist_prob[pair] += np.asarray(norm(pair_dist_count[pair]))
+                #pair_dist_prob[pair] += np.asarray(pair_dist_count[pair])
+                if pair not in pair_count:
+                    pair_count[pair] =0
+                pair_count[pair] +=1
+        for pair in pair_dist_prob:
+            pair_dist_prob[pair] = pair_dist_prob[pair]/float(pair_count[pair])
+        return pair_dist_prob
+
     def _stat_shape(self, shape_list):
         shape_list = np.asarray(shape_list)
         #print shape_list.shape
@@ -371,11 +420,13 @@ class EnergyModel:
                 Kmer_k_b,
                 PolyA_b,
                 GC_b,
-                Harmonic,
+                Harmonic=False,
+                PairCorr_k_dist=False,
                 scale=100,
                 shape=False,
                 sym=True,
                 graph=False):
+        
         freq = {}
         if shape:
             print >> sys.stderr, "sampling data values"        
@@ -403,7 +454,10 @@ class EnergyModel:
                 nts = all_path(order+1, 'ATCG')
                 for i in range(self.NCPlen-order):
                     for nt in nts:
-                        freq_fold[i][nt] = freq2[i][nt] / freq1[i][nt]
+                        if freq1[i][nt] > 0:
+                            freq_fold[i][nt] = freq2[i][nt] / freq1[i][nt]
+                        else:
+                            freq_fold[i][nt] = np.NaN
                 freq[name] = freq_fold        
         if Kmer_k_b:
             knum, bnum = Kmer_k_b
@@ -414,7 +468,10 @@ class EnergyModel:
                 name = 'Kmer' + str(i)
                 freq_fold = {}
                 for nt in nts:
-                    freq_fold[nt] = freq2[i][nt] / freq1[i][nt]
+                    if freq1[i][nt] > 0:
+                        freq_fold[nt] = freq2[i][nt] / freq1[i][nt]
+                    else:
+                        freq_fold[nt] = np.NaN
                 freq[name] = freq_fold
         if PolyA_b:
             bnum = PolyA_b
@@ -422,18 +479,43 @@ class EnergyModel:
             freq2, sample_num, mean2, std = self._stat_PolyA(bias_samples, bnum)
             for i in range(bnum):
                 name = 'PolyA' + str(i)
-                freq[name] = mean2[i]/mean1[i]
+                if mean1[i] > 0:
+                    freq[name] = mean2[i]/mean1[i]
+                else:
+                    freq[name] = np.NaN
         if GC_b:
             bnum = GC_b
             freq1, sample_num, mean1, std = self._stat_GC(even_samples, bnum)
             freq2, sample_num, mean2, std = self._stat_GC(bias_samples, bnum)
             for i in range(bnum):
                 name = 'GC' + str(i)
-                freq[name] = mean2[i]/mean1[i]
+                if mean1[i] > 0:
+                    freq[name] = mean2[i]/mean1[i]
+                else:
+                    freq[name] = np.NaN
+
+        if PairCorr_k_dist:
+            knum, max_dist = PairCorr_k_dist
+            pair_dist_prob1 = self._kmer_pair_dist_prob(even_samples, knum, max_dist)
+            pair_dist_prob2 = self._kmer_pair_dist_prob(bias_samples, knum, max_dist)
+            pair_corr = {}
+            nts = all_path(knum, 'ATCG')
+            for i in range(len(nts)-1):
+                for j in range(i, len(nts)):
+                    pair = tuple(sorted([nts[i], nts[j]]))
+                    if pair not in pair_corr:
+                        pair_corr[pair] = [np.nan]*max_dist
+                    for k in range(max_dist):
+                        try:
+                            pair_corr[pair][k] = pair_dist_prob2[pair][k] / pair_dist_prob1[pair][k]
+                        except:
+                            pass
+            freq['PairCorr'] = pair_corr
+            
         if Harmonic:
             None
 
-            # To do
+        # To do
         self.freq = freq
         print >> sys.stderr, "Done"
         return None
@@ -458,17 +540,32 @@ class EnergyModel:
                 nt1 = left[i:i+order+1]
                 nt2 = right[i:i+order+1]
                 temp = [0.0] * len(nts)
-                temp[nt_pos[nt1]] += 1
-                temp[nt_pos[nt2]] += 1
-                row += temp
+                try:
+                    temp[nt_pos[nt1]] += 1
+                except:
+                    pass
+                try:
+                    temp[nt_pos[nt2]] += 1
+                except:
+                    pass  
+                if sum(temp) > 0:
+                    row += temp
+                else: # data missing
+                    row += [np.nan] * len(nts)
             if (len(seq) - order) % 2 != 0:
                 assert order % 2 == 0
                 i = len(seq)/2 - (order+1)/2
                 nt = left[i:i+order+1]
                 temp = [0.0] * ((len(nts)+palnum)/2)
-                pos = min(nt_pos[nt], nt_pos[rev_comp(nt)])
-                temp[pos] += 1
-                row += temp
+                try:
+                    pos = min(nt_pos[nt], nt_pos[rev_comp(nt)])
+                    temp[pos] += 1
+                except:
+                    pass
+                if sum(temp) > 0:
+                    row += temp
+                else: # data missing
+                    row += [np.nan] * ((len(nts)+palnum)/2)
             var_list.append(row)
         return var_list
 
@@ -503,9 +600,18 @@ class EnergyModel:
                 for i in range(seqlen-knum+1):
                     nt1 = bseq1[i:i+knum]
                     nt2 = bseq2[i:i+knum]
-                    temp[nt_pos[nt1]] += 1
-                    temp[nt_pos[nt2]] += 1
-                row += temp
+                    try:
+                        temp[nt_pos[nt1]] += 1
+                    except:
+                        pass
+                    try:
+                        temp[nt_pos[nt2]] += 1
+                    except:
+                        pass
+                if sum(temp) > 0:
+                    row += temp
+                else: # data missing
+                    row += [np.nan] * len(nts)
             if bnum % 2 != 0:
                 assert seqlen % 2 != 0
                 st = len(seq)/2 - seqlen/2
@@ -513,9 +619,15 @@ class EnergyModel:
                 temp = [0] * ((len(nts)+palnum)/2)
                 for i in range(seqlen-knum+1):
                     nt = bseq[i:i+knum]
-                    pos = min(nt_pos[nt], nt_pos[rev_comp(nt)])
-                    temp[pos] += 1
-                row += temp
+                    try:
+                        pos = min(nt_pos[nt], nt_pos[rev_comp(nt)])
+                        temp[pos] += 1
+                    except:
+                        pass
+                if sum(temp) > 0:
+                    row += temp
+                else: # data missing
+                    row += [np.nan] * ((len(nts)+palnum)/2)
             var_list.append(row)
         return var_list
 
@@ -536,10 +648,13 @@ class EnergyModel:
                 bseq = seq[st:st+seqlen]
                 num_pos = Amer_len(bseq)
                 count = 0
+                score = 0.0
                 for num, pos in num_pos.items():
                     if num >=5:
-                        count += len(pos)
-                row.append(count)
+                        #count += len(pos)
+                        score += (num)*len(pos) 
+                #row.append(count)
+                row.append(score)
             sym_row = [row[i] + row[::-1][i] for i in range(bnum/2)]
             if bnum % 2 != 0:
                 sym_row += [row[bnum/2]]
@@ -606,6 +721,7 @@ class EnergyModel:
                GC_b,
                Harmonic,
                ref_key=None,
+               adjust=False,
                dPolyA=False,
                alpha=0.5,
                k_fold=10,
@@ -651,7 +767,7 @@ class EnergyModel:
             if dPolyA:
                 var_list[i] += dPolyA_vars[i]
 
-        """
+        
         # adjust variables by reference key
         if ref_key:
             new_var_list = []
@@ -680,11 +796,10 @@ class EnergyModel:
                 #plt.show()
             var_list = new_var_list
             nlogprob_list = new_nlogprob_list
-
-        
+            
         # adjust variables by reference point
         gnum = self.templatelen - self.NCPlen + 1 - 2*self.bound
-        if gnum > 1:
+        if adjust and gnum > 1:
             feature_list, target_list = [], []
             i = 0
             count = 0
@@ -704,10 +819,10 @@ class EnergyModel:
         else:
             feature_list = var_list
             target_list = [[value] for value in nlogprob_list]
-        """
-        
-        feature_list = var_list
-        target_list = [[value] for value in nlogprob_list]
+
+        # drop columns including NaNs (exclude data-missing coefficients)
+        column_mask = ~np.any(np.isnan(feature_list), axis=0) 
+        feature_list = list(np.asarray(feature_list)[:,column_mask])
         
         # k-fold corss validation
         print >> sys.stderr, "k-fold cross validation"
@@ -759,6 +874,18 @@ class EnergyModel:
         self.rsquare = reg.score(feature_list, target_list)
         print "r-square: " + str(self.rsquare)
 
+        # putting back data-missing coefficients as NaN
+        pt = 0
+        full_coef = []
+        for boolean in column_mask:
+            if boolean:
+                full_coef.append(reg.coef_[0][pt])
+                pt +=1
+            else:
+                full_coef.append(np.nan)
+        assert pt == len(reg.coef_[0])
+        assert len(column_mask) == len(full_coef)
+
         # retrieve all coefficient 
         pt = 0
         self.coeff = {}
@@ -779,8 +906,8 @@ class EnergyModel:
                         total = len(nts)
                     while count < total:
                         nt = nts[count]
-                        self.coeff[name][k][nt] = reg.coef_[0][pt]
-                        self.coeff[name][self.NCPlen-order-1-k][rev_comp(nt)] = reg.coef_[0][pt]
+                        self.coeff[name][k][nt] = full_coef[pt]
+                        self.coeff[name][self.NCPlen-order-1-k][rev_comp(nt)] = full_coef[pt]
                         count += 1
                         pt += 1
         if Kmer_k_b:
@@ -802,8 +929,8 @@ class EnergyModel:
                     total = len(nts)
                 while count < total:
                     nt = nts[count]
-                    self.coeff[name1][nt] = reg.coef_[0][pt]
-                    self.coeff[name2][rev_comp(nt)] = reg.coef_[0][pt]
+                    self.coeff[name1][nt] = full_coef[pt]
+                    self.coeff[name2][rev_comp(nt)] = full_coef[pt]
                     count += 1
                     pt += 1
         if PolyA_b:
@@ -811,20 +938,20 @@ class EnergyModel:
             for i in range((bnum+1)/2):
                 name1 = 'PolyA' + str(i)
                 name2 = 'PolyA' + str(bnum-1-i)
-                self.coeff[name1] = reg.coef_[0][pt]
-                self.coeff[name2] = reg.coef_[0][pt]
+                self.coeff[name1] = full_coef[pt]
+                self.coeff[name2] = full_coef[pt]
                 pt += 1
         if GC_b:
             bnum = GC_b
             for i in range((bnum+1)/2):
                 name1 = 'GC' + str(i)
                 name2 = 'GC' + str(bnum-1-i)
-                self.coeff[name1] = reg.coef_[0][pt]
-                self.coeff[name2] = reg.coef_[0][pt]
+                self.coeff[name1] = full_coef[pt]
+                self.coeff[name2] = full_coef[pt]
                 pt += 1
         if Harmonic:
             name = 'Harmonic'
-            self.coeff[name] = reg.coef_[0][pt]
+            self.coeff[name] = full_coef[pt]
             pt += 1
         if dPolyA:
             name = 'dPolyA'
@@ -832,10 +959,10 @@ class EnergyModel:
             for i in range(lmin, lmax+1):
                 self.coeff[name][i] = {}
                 for j in range(self.NCPlen/2 + 1):
-                    self.coeff[name][i][j] = reg.coef_[0][pt]
+                    self.coeff[name][i][j] = full_coef[pt]
                     pt +=1
             
-        assert len(reg.coef_[0]) == pt
+        assert len(full_coef) == pt
         print >> sys.stderr, "Done"
         #print self.coeff
         return None
@@ -937,11 +1064,13 @@ class EnergyModel:
         return profile
 
     def _predict(self, seq, bound=0, scale=1.0):
-        assert len(seq) >= self.NCPlen
+        assert len(seq) == self.templatelen
         seq_list = []
         pos_list = []
         for i in range(self.NCPlen/2+bound, self.templatelen-self.NCPlen/2-bound):
             NCPseq = seq[i-self.NCPlen/2:i+self.NCPlen/2+1]
+            if self.mask_idxs:
+                NCPseq = mask(NCPseq, self.mask_idxs, replace='-')
             seq_list.append(NCPseq)
             pos_list.append(i)
         
@@ -1012,16 +1141,21 @@ class EnergyModel:
             if dPolyA:
                 var_list[i] += dPolyA_vars[i]
 
+        column_mask = ~np.any(np.isnan(var_list), axis=0) 
+        var_list = list(np.asarray(var_list)[:,column_mask])
+
         Ypred = self.reg.predict(var_list)
         Ypred = [value[0] for value in Ypred]
         pred_prob = [np.exp(-scale*value) for value in Ypred]
         pred_prob = norm(pred_prob)
         return pred_prob
 
-    def predict(self, key_slider, bound=0, scale=2.0):
+    def predict(self, key_slider, keys=None, bound=0, scale=1.0):
         pred_key_slider = {}
         padding = [0.0]*(self.NCPlen/2 + bound)
-        for key in key_slider.keys():
+        if keys == None:
+            keys = key_slider.keys()
+        for key in keys:
             seq = key_slider[key].seq
             prob = padding + self._predict(seq, bound=bound, scale=scale) + padding
             dyadmap = [value*100 for value in prob]

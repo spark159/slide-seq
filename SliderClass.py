@@ -293,14 +293,14 @@ class Slider:
         return peaks
 
         
-    def median_pos (self, expos=None, selected=None):
+    def median_pos (self, scale=1.0, expos=None, selected=None):
         data = []
         if selected == None:
             selected = range(len(self.dyadmap))
         for i in selected:
             if i == expos:
                 continue
-            for k in range(int(self.dyadmap[i])):
+            for k in range(int(scale*self.dyadmap[i])):
                 data.append(i-self.dyad_axis)
         return np.median(data)
 
@@ -361,10 +361,10 @@ class Slider:
                 peak_signal[loc+offset] += sig
         return peak_signal
 
-    def KDE (self, band_width=0.5):
+    def KDE (self, scale=100.0, band_width=1.0):
         X, X_plot = [], []
         for k in range(len(self.dyadmap)):
-            for num in range(int(self.dyadmap[k])):
+            for num in range(int(scale*self.dyadmap[k])):
                 X.append([k])
             X_plot.append([k])
         #X_plot = np.linspace(0,len(self.dyadmap)-1, num = len(self.dyadmap)*5)[:,np.newaxis]
@@ -372,10 +372,10 @@ class Slider:
         log_density = kde.score_samples(X_plot)
         return np.exp(log_density)
 
-    def entropy (self, band_width=0.5):
+    def entropy (self, scale=1.0, band_width=0.5):
         X, X_plot = [], []
         for k in range(len(self.dyadmap)):
-            for num in range(int(self.dyadmap[k])):
+            for num in range(int(scale*self.dyadmap[k])):
                 X.append([k])
             X_plot.append([k])
         #X_plot = np.linspace(0,len(self.dyadmap)-1, num = len(self.dyadmap)*5)[:,np.newaxis]
@@ -387,10 +387,10 @@ class Slider:
             entropy += -kde[i]*log_density[i]
         return entropy
 
-    def energy_profile (self, kT=1, band_width=0.5):
+    def energy_profile (self, kT=1, scale=1.0, band_width=0.5):
         X, X_plot = [], []
         for k in range(len(self.dyadmap)):
-            for num in range(int(self.dyadmap[k])):
+            for num in range(int(scale*self.dyadmap[k])):
                 X.append([k])
             X_plot.append([k])
         #X_plot = np.linspace(0,len(self.dyadmap)-1, num = len(self.dyadmap)*5)[:,np.newaxis]

@@ -417,6 +417,9 @@ class SeqLinearModel:
         self.freq = None
         self.sym = None
 
+        # temporal
+        #self.templatelen = 225
+
     def _even_sampling(self, sym=True, shape=False):
         if not shape:
             seq_samples = []
@@ -630,8 +633,9 @@ class SeqLinearModel:
                 self.freq = freq
         else:
             # sampling data
-            print >> sys.stderr, "sampling data values"        
-            even_samples = self._even_sampling(sym=sym)
+            print >> sys.stderr, "sampling data values"
+            if norm:
+                even_samples = self._even_sampling(sym=sym)
             bias_samples = self._bias_sampling(scale=scale, sym=sym)
         
         # frequency counts
@@ -639,39 +643,61 @@ class SeqLinearModel:
         if MM_orders:
             for order in sorted(MM_orders):
                 name = 'MM' + str(order)
-                freq1, sample_num, mean, std, stdz_freq = self._stat_Markov(even_samples, order)
+                if norm:
+                    freq1, sample_num, mean, std, stdz_freq = self._stat_Markov(even_samples, order)
                 freq2, sample_num, mean, std, stdz_freq = self._stat_Markov(bias_samples, order)
                 freq_fold = [{} for i in range(self.NCPlen-order)]
                 nts = all_path(order+1, 'ATCG')
                 for i in range(self.NCPlen-order):
                     for nt in nts:
-                        freq_fold[i][nt] = freq2[i][nt] / freq1[i][nt]
+                        if norm:
+                            if freq1[i][nt] > 0:
+                                freq_fold[i][nt] = freq2[i][nt] / freq1[i][nt]
+                            else:
+                                freq_fold[i][nt] = np.nan
+                        else:
+                            freq_fold[i][nt] = freq2[i][nt]
                 freq[name] = freq_fold        
         if Kmer_k_b:
             knum, bnum = Kmer_k_b
-            freq1, sample_num, mean, std, stdz_freq = self._stat_Kmer(even_samples, knum, bnum)
+            if norm:
+                freq1, sample_num, mean, std, stdz_freq = self._stat_Kmer(even_samples, knum, bnum)
             freq2, sample_num, mean, std, stdz_freq = self._stat_Kmer(bias_samples, knum, bnum)
             nts = all_path(knum, 'ATCG')
             for i in range(bnum):
                 name = 'Kmer' + str(i)
                 freq_fold = {}
                 for nt in nts:
-                    freq_fold[nt] = freq2[i][nt] / freq1[i][nt]
+                    if norm:
+                        if freq1[i][nt] > 0:
+                            freq_fold[nt] = freq2[i][nt] / freq1[i][nt]
+                        else:
+                            freq_fold[nt] = np.nan
+                    else:
+                        freq_fold[nt] = freq2[i][nt]
                 freq[name] = freq_fold
         if PolyA_b:
             bnum = PolyA_b
-            freq1, sample_num, mean1, std = self._stat_PolyA(even_samples, bnum)
+            if norm:
+                freq1, sample_num, mean1, std = self._stat_PolyA(even_samples, bnum)
             freq2, sample_num, mean2, std = self._stat_PolyA(bias_samples, bnum)
             for i in range(bnum):
                 name = 'PolyA' + str(i)
-                freq[name] = mean2[i]/mean1[i]
+                if norm:
+                    freq[name] = mean2[i]/mean1[i]
+                else:
+                    freq[name] = mean2[i]
         if GC_b:
             bnum = GC_b
-            freq1, sample_num, mean1, std = self._stat_GC(even_samples, bnum)
+            if norm:
+                freq1, sample_num, mean1, std = self._stat_GC(even_samples, bnum)
             freq2, sample_num, mean2, std = self._stat_GC(bias_samples, bnum)
             for i in range(bnum):
                 name = 'GC' + str(i)
-                freq[name] = mean2[i]/mean1[i]
+                if norm:
+                    freq[name] = mean2[i]/mean1[i]
+                else:
+                    freq[name] = mean2[i]
         if Harmonic:
             None
 
