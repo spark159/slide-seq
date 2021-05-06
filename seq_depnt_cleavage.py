@@ -1,6 +1,7 @@
 import math
 import random
 import pickle
+import load
 import EnModel
 import LinModel
 import SliderClass
@@ -66,6 +67,10 @@ k = 3
 # offset length
 offset = 52
 
+ref_length = 225
+dyad_axis = ref_length/2
+dyad_offset = 52
+NCP_len = 147
 
 # load library
 name_key_slider = {}
