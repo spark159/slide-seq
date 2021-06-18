@@ -27,6 +27,9 @@ import LinModel
 import EnModel
 from scipy import signal
 from scipy import fft
+from scipy.spatial.distance import squareform
+from sklearn import preprocessing
+import random
 
 def GC_content (seq):
     count = 0
@@ -155,13 +158,13 @@ name_key_slider['Control1'] = Control1
 name_key_slider['Control2'] = Control2
 
 # PolyA library
-for condition in []:
+for condition in ['old']:
     if condition == 'old':
         path = "/home/spark159/../../media/spark159/sw/polyAlibFinal/"
     elif condition == 'new':
         #path = "/home/spark159/../../media/spark159/sw/all_slide_seq_data/"
         path = "/home/spark159/../../media/spark159/sw/polyAlibFinal/"
-    for time in [0]:
+    for time in [5]:
         fname = "%slib_%s_%s_%srep" % ('polyA', condition, time, 1)
         if condition =='old' and time == 0:
             sort_fname = "Ascan0_S1_L001_R.oldsort"
@@ -178,12 +181,25 @@ for condition in []:
             key_slider = load.load_files([path +  sort_fname], ref_length, dyad_axis, dyad_offset, filter_num = 10, fill='linear')
             with open(fname + ".pickle", "wb") as f:
                 pickle.dump(key_slider, f)
+
+        # PolyA libary reindexing
+        polyAlib_id_newid = pickle.load(open("polyAlib_id_newid.p", "rb"))
+        polyAlib_newid_id = pickle.load(open("polyAlib_newid_id.p", "rb"))
+
+        newkey_slider = {}
+        for key, slider in key_slider.items():
+            newkey = polyAlib_id_newid[key]
+            newkey_slider[newkey] = slider
+                
         assert fname not in name_key_slider
-        name_key_slider[fname] = key_slider
+        #name_key_slider[fname] = key_slider
+        name_key_slider[fname] = newkey_slider
+
+
 
 # Mismatch/Indel library
 path = "/home/spark159/../../media/spark159/sw/mmlibIDlibFinal/"
-for mtype in ['I']:
+for mtype in []:
     if mtype == 'M':
         library_type = 'mm'
     elif mtype in ['I', 'D']:
@@ -375,7 +391,7 @@ if False:
     plt.close()
 
 # clustering analysis
-if False:
+if True:
     for name in name_key_slider:
         if name.startswith('Control'):
             continue
@@ -413,14 +429,24 @@ if False:
             key_KL[key] = analysis.KL_div(dyadmap, control_map)
 
         # Dimensionality reduction by PCA
-        pca = PCA(n_components=10).fit(X)
+        # no standardization
+        #pca = PCA(n_components=10).fit(X)
+
+        # with standardization
+        #scaler = preprocessing.StandardScaler().fit(X)
+        scaler = preprocessing.StandardScaler(with_std=False).fit(X)
+        X_scaled = scaler.transform(X)
+        pca = PCA(n_components=10).fit(X_scaled)
+        
         variance_ratio_list = 100* pca.explained_variance_ratio_
 
         num = 1
         while sum(variance_ratio_list[:num]) <= 90: # can explain 90% of variance
             num +=1
 
+        print num
         #num=10
+        #num=3        
 
         fig = plt.figure()
         plt.plot(range(1, len(variance_ratio_list)+1), variance_ratio_list, '.-')
@@ -431,10 +457,9 @@ if False:
         #plt.show()
         plt.close()
 
-        #sys.exit(1)
+        Xr = [vect[:num] for vect in pca.transform(X)]
 
-        pca = PCA(n_components=num).fit(X)
-        Xr = pca.transform(X)
+        #sys.exit(1)
 
         fig = plt.figure()
         for i in range(len(pca.components_)):
@@ -443,90 +468,236 @@ if False:
         #plt.show()
         plt.close()
 
+        # distance matrix
+        metric = 'JS'
+        fname = name + "_" + metric + "_" + 'matrix'
+        try:
+            with open(fname + ".pickle", "rb") as f:
+                key1_key2_dist = pickle.load(f)
+        except:
+            key1_key2_dist = {}
+            for i in range(len(keys)):
+                key1 = keys[i]
+                for j in range(i, len(keys)):
+                    key2 = keys[j]
+                    dyadmap1 = analysis.norm(key_slider[key1].dyadmap)
+                    dyadmap2 = analysis.norm(key_slider[key2].dyadmap)
+                    dist = analysis.JS_dist(dyadmap1, dyadmap2)
+                    if key1 not in key1_key2_dist:
+                        key1_key2_dist[key1] = {}
+                    key1_key2_dist[key1][key2] = dist
+                    if key2 not in key1_key2_dist:
+                        key1_key2_dist[key2] = {}
+                    key1_key2_dist[key2][key1] = dist
 
-        # hierarichal clustering by PCA components
-        Z = linkage(Xr, 'ward')
+            with open(fname + ".pickle", "wb") as f:
+                pickle.dump(key1_key2_dist, f)
 
-        # hierarchial clustering with JS distance metric of raw data
-        #Z = linkage(X, 'weighted', metric=analysis.JS_dist)
+        ## Pick clustering algorithm and number of clusters
+        algorithm = 'hierarchy'
+        cnum = 7
+        color_list = ['r', 'g', 'b', 'orange', 'm', 'c', 'darksalmon', 'navy', 'seagreen', 'skyblue']
 
-        node_children = {i:{} for i in range(len(num_key))}
-        node_keys = {i:{num_key[i]} for i in range(len(num_key))}
-        for i in range(len(Z)):
-            node1, node2 = int(Z[i][0]), int(Z[i][1])
-            new_node = max(node_keys.keys()) + 1
-            node_children[new_node] = set([node1, node2])
-            node_keys[new_node] = node_keys[node1] | node_keys[node2]
+        if algorithm == 'Kmeans':
+            #Kmeans clustering
+            key_xr = {}
+            for i in range(len(Xr)):
+                key = num_key[i]
+                key_xr[key] = Xr[i]
+            key_cID, cID_keys = analysis.Kmeans(key_xr, cluster_num=cnum, sample_list=None, type_targets=[None, []])
+            #color_list = ['r', 'g', 'b', 'y', 'm', 'c', 'darksalmon', 'seagreen', 'skyblue', 'navy']
 
-        num_cID = [cID-1 for cID in fcluster(Z, 8, 'maxclust')]
-        cID_keys, key_cID = {}, {}
-        for i in range(len(num_cID)):
-            cID = num_cID[i]
-            key = num_key[i]
-            if cID not in cID_keys:
-                cID_keys[cID] = set([])
-            cID_keys[cID].add(key)
-            key_cID[key] = cID
+        
+        elif algorithm == 'hierarchy':
+            # hierarichal clustering by PCA components
+            #Z = linkage(Xr, 'ward')
+            #Z = linkage(Xr, 'average', optimal_ordering=True)
 
-        cID_nodes = {}
-        for cID, keys1 in cID_keys.items():
-            for node, keys2 in node_keys.items():
-                if keys1 == keys2:
-                    if cID not in cID_nodes:
-                        cID_nodes[cID] = set([])
-                    cID_nodes[cID].add(node)
-                    cID_nodes[cID] |= get_descendants(node_children, node)
-                    break
+            # hierarchial clustering with JS distance metric of raw data
+            dist_matrix = np.zeros((len(keys), len(keys))) # similarity matrix
+            for i in range(len(keys)-1):
+                for j in range(i+1, len(keys)):
+                    key1, key2 = keys[i], keys[j]
+                    JS = key1_key2_dist[key1][key2]
+                    dist_matrix[i][j] = JS
+                    dist_matrix[j][i] = JS
 
-        # KL-div color map
-        color_list = np.linspace(0, 1, num=len(keys))
-        cmap = cm.get_cmap('RdPu')
-        key_color = {}
-        key_list = dict_sort(key_KL)
-        for i in range(len(key_list)):
-            key = key_list[i]
-            color = cmap(color_list[i])
-            key_color[key] = color
+            y = squareform(dist_matrix)
+            Z = linkage(y, 'average', optimal_ordering=True)
+            #Z = linkage(y, 'single', optimal_ordering=True)
 
-        # cluster color map
-        #color_list = np.linspace(0.01, 1, num=len(cID_nodes))
-        #cmap = cm.get_cmap("jet")
-        color_list = ['r', 'g', 'b', 'y', 'm', 'c', 'darksalmon', 'seagreen', 'skyblue', 'navy']
-        node_color = ['black'] * (2 * len(Xr) - 1)
-        for i in range(len(cID_nodes)):
-            cID = cID_nodes.keys()[i]
-            #color = cmap(color_list[i])
-            color = color_list[i]
-            for node in cID_nodes[cID]:
-                node_color[node] = color
+            
+            #Z = linkage(X, 'weighted', metric=analysis.JS_dist)
+            #Z = linkage(X, 'average', metric=analysis.JS_dist)
 
-        # plot dendogram
+            node_children = {i:{} for i in range(len(num_key))}
+            node_keys = {i:{num_key[i]} for i in range(len(num_key))}
+            for i in range(len(Z)):
+                node1, node2 = int(Z[i][0]), int(Z[i][1])
+                new_node = max(node_keys.keys()) + 1
+                node_children[new_node] = set([node1, node2])
+                node_keys[new_node] = node_keys[node1] | node_keys[node2]
+
+            #num_cID = [cID-1 for cID in fcluster(Z, 8, 'maxclust')]
+            #num_cID = [cID-1 for cID in fcluster(Z, cnum, 'maxclust')]
+            num_cID = [cID-1 for cID in fcluster(Z, t=0.4, criterion='distance')]
+            cID_keys, key_cID = {}, {}
+            for i in range(len(num_cID)):
+                cID = num_cID[i]
+                key = num_key[i]
+                if cID not in cID_keys:
+                    cID_keys[cID] = set([])
+                cID_keys[cID].add(key)
+                key_cID[key] = cID
+
+            cID_nodes = {}
+            for cID, keys1 in cID_keys.items():
+                for node, keys2 in node_keys.items():
+                    if keys1 == keys2:
+                        if cID not in cID_nodes:
+                            cID_nodes[cID] = set([])
+                        cID_nodes[cID].add(node)
+                        cID_nodes[cID] |= get_descendants(node_children, node)
+                        break
+
+            # KL-div color map
+            #color_list = np.linspace(0, 1, num=len(keys))
+            cmap = cm.get_cmap('RdPu')
+            key_color = {}
+            key_list = dict_sort(key_KL)
+            for i in range(len(key_list)):
+                key = key_list[i]
+                #color = cmap(color_list[i])
+                scaled_KL = 0.01 + (key_KL[key]-min(key_KL.values()))*float(1.0 - 0.01)/(max(key_KL.values())-min(key_KL.values()))
+                color = cmap(scaled_KL)
+                key_color[key] = color
+
+            # cluster color map
+            #color_list = np.linspace(0.01, 1, num=len(cID_nodes))
+            #cmap = cm.get_cmap("jet")
+            color_list = ['r', 'g', 'b', 'y', 'm', 'c', 'darksalmon', 'seagreen', 'skyblue', 'navy']*10
+            node_color = ['black'] * (2 * len(Xr) - 1)
+            for i in range(len(cID_nodes)):
+                cID = cID_nodes.keys()[i]
+                #color = cmap(color_list[i])
+                color = color_list[i]
+                for node in cID_nodes[cID]:
+                    node_color[node] = color
+                    
+            #node_color = ['black'] * (2 * len(Xr) - 1)
+            
+            # plot dendogram
+            fig = plt.figure()
+            dn = dendrogram(Z, link_color_func=lambda k: node_color[k])
+
+            ax = plt.gca()
+            xlbls = ax.get_xmajorticklabels()
+            for lbl in xlbls:
+                    lbl.set_color(key_color[num_key[int(lbl.get_text())]])
+
+            #plt.savefig("dendrogram.png")
+            plt.show()
+            plt.close()
+
+            # plot signal for each cluster
+            fig = plt.figure()
+            for i in range(len(cID_keys)):
+                key_list = cID_keys[i]
+                for key in key_list:
+                    plt.subplot(len(cID_keys),1,i+1)
+                    plt.plot(analysis.norm(key_slider[key].dyadmap), alpha=0.2)
+                    loc, mtype, nts = key.split('-')
+                    st = int(loc)
+                    ed = st+len(nts)
+                    plt.axvspan(st, ed-1, alpha=0.1, color='red')
+            #plt.show()
+            plt.close()
+
+        elif algorithm == 'Spectral':
+            #Spectral clustering
+            A = np.zeros((len(keys), len(keys))) # similarity matrix
+            for i in range(len(keys)-1):
+                for j in range(i+1, len(keys)):
+                    key1, key2 = keys[i], keys[j]
+                    dist = key1_key2_dist[key1][key2]
+                    #dyadmap1 = analysis.norm(key_slider[key1].dyadmap)
+                    #dyadmap2 = analysis.norm(key_slider[key2].dyadmap)
+                    #vect1, vect2 = Xr[i], Xr[j]
+                    #dist = np.sqrt(np.sum((vect1-vect2)**2))
+                    #score = np.exp(-dist**2)
+                    #JS = analysis.JS_dist(dyadmap1, dyadmap2)
+                    score = np.exp(-10*dist)
+                    #score = np.exp(-100*dist**2)
+                    A[i][j] = score
+                    A[j][i] = score
+
+            idx_cID = sklearn.cluster.spectral_clustering(affinity=A, n_clusters=cnum)
+            key_cID, cID_keys = {}, {}
+            for i in range(len(idx_cID)):
+                key = keys[i]
+                cID = idx_cID[i]
+                key_cID[key] = cID
+                if cID not in cID_keys:
+                    cID_keys[cID] = []
+                cID_keys[cID].append(key)
+
+            D = np.diag(A.sum(axis=0))
+            L = D - A # graph laplacian
+            w, v = eigsh(L, 5, which='SM')
+
+            # plot of eigenvector
+            color_list = ['r', 'g', 'b', 'orange', 'm', 'c', 'darksalmon', 'navy', 'seagreen', 'skyblue']*10
+            eigen_key = sorted([(v[i,1], keys[i]) for i in range(len(keys))], cmp=tuple_cmp)
+            fig = plt.figure()
+            for i in range(len(eigen_key)):
+                eigen, key = eigen_key[i]
+                cID = key_cID[key]
+                plt.plot(i, eigen, '.', color=color_list[cID])
+            plt.ylabel("Eigenvector")
+            #plt.show()
+            plt.close()
+
+        # plot of reordered similarity matrix
+        img = np.zeros((len(keys), len(keys)))
+        img[:] = np.nan
+        for i in range(len(keys)-1):
+            for j in range(i+1, len(keys)):
+                #img[i][j] = A[i][j]
+                key1, key2 = keys[i], keys[j]
+                dist = key1_key2_dist[key1][key2]
+                #vect1, vect2 = Xr[i], Xr[j]
+                #dist = np.sqrt(np.sum((vect1-vect2)**2))
+                #score = np.exp(-dist**2)
+                score = np.exp(-10*dist)
+                img[i][j] = score
+
+        new_keys = []
+        for cID in sorted(cID_keys.keys()):
+            #new_keys += cID_keys[cID]
+            temp = list(cID_keys[cID])
+            random.shuffle(temp)
+            new_keys += temp
+
+        #new_keys = [ key for value, key in eigen_key ]
+
+        for i in range(len(new_keys)-1): 
+           for j in range(i+1, len(new_keys)):
+                key1, key2 = new_keys[i], new_keys[j]
+                #idx1, idx2 = key_num[key1], key_num[key2]
+                #vect1, vect2 = Xr[i], Xr[j]
+                #dist = np.sqrt(np.sum((vect1-vect2)**2))
+                dist = key1_key2_dist[key1][key2]
+                #score = np.exp(-dist**2)
+                score = np.exp(-10*dist)
+                img[j][i] = score
+
         fig = plt.figure()
-        dn = dendrogram(Z, link_color_func=lambda k: node_color[k])
-
-        ax = plt.gca()
-        xlbls = ax.get_xmajorticklabels()
-        for lbl in xlbls:
-                lbl.set_color(key_color[num_key[int(lbl.get_text())]])
-
-        #plt.savefig("dendrogram.png")
+        #plt.imshow(img, cmap="YlOrRd")
+        plt.imshow(img, cmap="jet")
+        plt.colorbar()
         #plt.show()
         plt.close()
-
-        # plot signal for each cluster
-        fig = plt.figure()
-        for i in range(len(cID_keys)):
-            key_list = cID_keys[i]
-            for key in key_list:
-                plt.subplot(len(cID_keys),1,i+1)
-                plt.plot(analysis.norm(key_slider[key].dyadmap), alpha=0.2)
-                loc, mtype, nts = key.split('-')
-                st = int(loc)
-                ed = st+len(nts)
-                plt.axvspan(st, ed-1, alpha=0.1, color='red')
-        #plt.show()
-        plt.close()
-
+            
         # PCA plot
         fig = plt.figure()
         for i in range(len(Xr)):
@@ -549,76 +720,6 @@ if False:
         #plt.show()
         plt.close()
 
-        ## Other clustering approach
-        ##Kmeans clustering
-        #key_xr = {}
-        #for i in range(len(Xr)):
-        #    key = num_key[i]
-        #    key_xr[key] = Xr[i]
-        #key_cID, cID_keys = analysis.Kmeans(key_xr, cluster_num=5, sample_list=None, type_targets=[None, []])
-        #color_list = ['r', 'g', 'b', 'y', 'm', 'c', 'darksalmon', 'seagreen', 'skyblue', 'navy']
-    
-        #Spectral clustering
-        A = np.zeros((len(keys), len(keys))) # similarity matrix
-        for i in range(len(keys)-1):
-            for j in range(i+1, len(keys)):
-                key1, key2 = keys[i], keys[j]
-                dyadmap1 = analysis.norm(key_slider[key1].dyadmap)
-                dyadmap2 = analysis.norm(key_slider[key2].dyadmap)
-                JS = analysis.JS_dist(dyadmap1, dyadmap2)
-                score = np.exp(-10*JS)
-                A[i][j] = score
-                A[j][i] = score
-
-        idx_cID = sklearn.cluster.spectral_clustering(affinity=A, n_clusters=10)
-        key_cID, cID_keys = {}, {}
-        for i in range(len(idx_cID)):
-            key = keys[i]
-            cID = idx_cID[i]
-            key_cID[key] = cID
-            if cID not in cID_keys:
-                cID_keys[cID] = []
-            cID_keys[cID].append(key)
-            
-        D = np.diag(A.sum(axis=0))
-        L = D - A # graph laplacian
-        w, v = eigsh(L, 5, which='SM')
-
-        # plot of eigenvector
-        color_list = ['r', 'g', 'b', 'orange', 'm', 'c', 'darksalmon', 'navy', 'seagreen', 'skyblue']
-        eigen_key = sorted([(v[i,1], keys[i]) for i in range(len(keys))], cmp=tuple_cmp)
-        fig = plt.figure()
-        for i in range(len(eigen_key)):
-            eigen, key = eigen_key[i]
-            cID = key_cID[key]
-            plt.plot(i, eigen, '.', color=color_list[cID])
-        plt.ylabel("Eigenvector")
-        #plt.show()
-        plt.close()
-
-        # plot of similarity matrix
-        img = np.zeros((len(keys), len(keys)))
-        img[:] = np.nan
-        for i in range(len(keys)-1):
-            for j in range(i, len(keys)):
-                img[i][j] = A[i][j]
-
-        new_keys = []
-        for cID in sorted(cID_keys.keys()):
-            new_keys += cID_keys[cID]
-
-        for i in range(len(new_keys)-1):
-            for j in range(i+1, len(new_keys)):
-                key1, key2 = new_keys[i], new_keys[j]
-                idx1, idx2 = key_num[key1], key_num[key2]
-                img[j][i] = A[idx1][idx2]
-
-        fig = plt.figure()
-        plt.imshow(img, cmap="YlOrRd")
-        plt.colorbar()
-        plt.show()
-        plt.close()
-        
         # mean position for each cluster
         cID_meanpos = {}
         for cID in cID_keys:
@@ -628,7 +729,63 @@ if False:
                 temp.append(meanpos)
             cID_meanpos[cID] = np.mean(temp)
 
-        # make perturbation map
+        # read counts for each cluster
+        cID_readnums = {}
+        for cID in cID_keys:
+            for key in cID_keys[cID]:
+                readnum = sum(key_slider[key].dyadmap)
+                if cID not in cID_readnums:
+                    cID_readnums[cID] = []
+                cID_readnums[cID].append(readnum)
+
+        fig = plt.figure()
+        cIDs = dict_sort(cID_meanpos)
+        for i in range(len(cID_readnums)):
+                cID = cIDs[i]
+                readnums = cID_readnums[cID]
+                plt.plot([i]*len(readnums), readnums, '.')
+        #plt.show()
+        plt.close()
+
+        # plot clustering map
+        fig = plt.figure()
+        for key in keys:
+            loc, mtype, nts = key.split('-')
+            st = int(loc)
+            ed = st+len(nts)
+            length = len(nts)
+            pos = (st + ed)/2
+            cID = key_cID[key]
+            #alpha = 0.01 + (key_KL[key]-min(key_KL.values()))*float(1.0 - 0.01)/(max(key_KL.values())-min(key_KL.values()))
+            #plt.plot(range(st, ed), [len(nts)]*len(nts), '.', color=color_list[cID], alpha=alpha)
+            plt.plot([st], [len(nts)], 'o', color=color_list[cID])
+        plt.show()
+        plt.close()
+
+        # plot heatmap for each cluster
+        #graph_edit.plot_map(key_slider, [cID_keys[cID] for cID in cIDs], norm_choice=True, obs_func = Slider.get_dyadmap, draw = 'key', slicing=0, note='Clustering')
+
+        #graph_edit.plot_map(key_slider, [cID_keys[cID] for cID in cIDs], norm_choice=True, obs_func = Slider.peak_signal, draw='key', slicing=0, note='Clustering')
+
+        
+        # plot KL divergence map
+        fig = plt.figure()
+        for key in keys:
+            loc, mtype, nts = key.split('-')
+            st = int(loc)
+            ed = st+len(nts)
+            length = len(nts)
+            pos = (st + ed)/2
+            cID = key_cID[key]
+            scaled_KL = 0.01 + (key_KL[key]-min(key_KL.values()))*float(1.0 - 0.01)/(max(key_KL.values())-min(key_KL.values()))
+            #plt.plot(range(st, ed), [len(nts)]*len(nts), '.', color=color_list[cID], alpha=alpha)
+            plt.plot([st], [len(nts)], 'o', color= cm.get_cmap('RdPu')(scaled_KL))
+            #plt.plot(range(st, ed), [len(nts)]*len(nts), 'o', color= cm.get_cmap('RdPu')(alpha), alpha=0.5)
+        #plt.show()
+        plt.close()
+        
+
+        # make Widom 601 perturbation map
         size_loc_KLs = {}
         for key in keys:
             loc, mtype, nts = key.split('-')
@@ -656,22 +813,9 @@ if False:
 
         min_KL, max_KL = min(meanKLs), max(meanKLs)
 
-        # clustering map
-        fig = plt.figure()
-        for key in keys:
-            loc, mtype, nts = key.split('-')
-            st = int(loc)
-            ed = st+len(nts)
-            length = len(nts)
-            pos = (st + ed)/2
-            cID = key_cID[key]
-            #cID = num_cID[key_num[key]]
-            alpha = 0.01 + (key_KL[key]-min(key_KL.values()))*float(1.0 - 0.01)/(max(key_KL.values())-min(key_KL.values()))
-            plt.plot(range(st, ed), [len(nts)]*len(nts), '.', color=color_list[cID], alpha=alpha)
-        #plt.show()
-        plt.close()
-
-        group_num = 5
+        #group_num = 5
+        group_num = 7
+        #group_num = 10
         page_num = int(math.ceil(float(len(cID_keys)) / group_num))
         for u in range(page_num):
             fig = plt.figure()
@@ -714,7 +858,7 @@ if False:
             plt.show()
             plt.close()
 
-        sys.exit(1)
+        #sys.exit(1)
 
 # some basic statistics
 if False:
@@ -799,7 +943,7 @@ if False:
         #graph_edit.plot_map(key_logratio, sample_list, True, Slider.get_dyadmap, draw=None, slicing=0, note='_signal_' + name)
 
 # energy/force profile analysis
-if True:
+if False:
     name_profile = {}
     for profile in ["energy"]:
         for control_type in ["601"]:
@@ -1111,6 +1255,8 @@ if True:
                     plt.show()
                     plt.close()
                 """
+
+sys.exit(1)
                 
 # yeast library analysis
 key_slider1 = name_key_slider["plusonelib_new:corrected_0"]

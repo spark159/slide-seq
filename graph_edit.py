@@ -155,13 +155,17 @@ def plot_map(key_slider, sample_list, norm_choice, obs_func, draw = None, slicin
             if draw:
                 A,B,C,D = 4, 8, 0, 2
 
+        # temporal for clustering analysis
+        A,B,C,D = 1, 2, 0, 1 #polyA lib
+        #A,B,C,D = 2, 4, 0, 2 #mmlib
+
         # temporal for 601 based library
         #A,B,C,D = 4, 8, 0, 2
         #D = 6
 
         # temporal for yeast library
-        A,B,C,D = 4, 8, 2, 2
-        D = 6
+        #A,B,C,D = 4, 8, 2, 2
+        #D = 6
 
         for j in range(len(key_list)):
             key = key_list[j]
@@ -194,8 +198,10 @@ def plot_map(key_slider, sample_list, norm_choice, obs_func, draw = None, slicin
                 obs_tmp_img.append(obs_map)
             
             if norm_choice:
-                obs_tmp_img = normalize(obs_tmp_img)
-
+                #obs_tmp_img = normalize(obs_tmp_img)
+                obs_tmp_img = np.asarray(normalize(obs_tmp_img, percentage=False))*B
+                #obs_tmp_img = np.log2(np.asarray(normalize(obs_tmp_img, percentage=False))*B+1)
+                                         
             for k in range(len(obs_tmp_img)):
                 row = obs_tmp_img[k]
                 if draw and k < D:
@@ -219,18 +225,22 @@ def plot_map(key_slider, sample_list, norm_choice, obs_func, draw = None, slicin
         ax.spines['right'].set_visible(False)
         plt.tick_params(top='off', left='off', right='off', labelleft='off', labelbottom='on')
         #cmap = plt.cm.bwr
-        #cmap = plt.cm.YlGnBu
-        cmap = plt.cm.YlOrBr
+        cmap = plt.cm.YlGnBu
+        #cmap = plt.cm.Greens
+        #cmap = plt.cm.YlOrBr
         #cmap = plt.cm.magma_r
         #cmap = plt.cm.jet
         if draw:
             cmap.set_bad((1, 0, 0, 1))
         #ax.imshow(obs_img, cmap=cmap, interpolation='none', vmin=-0.15, vmax=0.15)
         # temporal for yeast
-        ax.imshow(obs_img, cmap=cmap, interpolation='none', vmin=0, vmax=1.2)
-        #ax.imshow(obs_img, cmap=cmap, interpolation='none')
-        plt.savefig('obs_cond' + str(i+1) + note + '.png', dpi=1500)
+        #ax.imshow(obs_img, cmap=cmap, interpolation='none', vmin=0, vmax=1.2)
+        #ax.imshow(obs_img, cmap=cmap, interpolation='none', vmin=0, vmax=1.0)
+        ax.imshow(obs_img, cmap=cmap, interpolation='none')
+        #plt.savefig('obs_cond' + str(i+1) + note + '.png', dpi=1500)
+        plt.savefig('obs_cond' + str(i+1) + note + '.png', dpi=1000)
         plt.close()
+    return obs_img
 
 # plot observable signal
 def plot_signal (key_slider, sample_list, norm_choice, obs_func, mean_choice=False, draw = None, slicing = 0, note = "", *args ):

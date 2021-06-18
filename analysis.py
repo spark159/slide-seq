@@ -462,9 +462,68 @@ def compare_map (key_slider1, key_slider2):
 
     return key_coeff
 
+def Silhouette (key_cID, cID_keys, key1_key2_dist):
+    key_cID_dists = {}
+    for key in key_cID:
+        for cID in cID_keys:
+            for other_key in cID_keys[cID]:
+                if key == other_key:
+                    continue
+                dist = key1_key2_dist[key][other_key]
+                if key not in key_cID_dists:
+                    key_cID_dists[key] = {}
+                if cID not in key_cID_dists[key]:
+                    key_cID_dists[key][cID] = []
+                key_cID_dists[key][cID].append(dist)
+
+    key_cID_mdist = {}
+    for key in key_cID_dists:
+        for cID in key_cID_dists[key]:
+            mdist = np.mean(key_cID_dists[key][cID])
+            if key not in key_cID_mdist:
+                key_cID_mdist[key] = {}
+            key_cID_mdist[key][cID] = mdist
+
+    key_s = {}
+    for key in key_cID_mdist:
+        cID = key_cID[key]
+        cID_mdist = key_cID_mdist[key]
+        a = cID_mdist[cID]
+        b = np.min([cID_mdist[i] for i in list(set(cID_mdist.keys())-set([cID]))])
+        if a < b:
+            s = 1.0 - float(a)/b
+        elif a > b:
+            s = float(b)/a - 1.0
+        else:
+            assert a == b
+            s = 0
+        key_s[key] = s
+
+    return key_s
 
 
+def Diffusion_map (dist_matrix, epsilon, step, n_eigen):
+    # make diffusion matrix
+    dist_matrix = np.asarray(dist_matrix)
 
+    L = np.exp(-dist_matrix**2 / (2*epsilon))
+    norm = np.sum(L, axis=0)
+    Di = np.diag(norm)
+    inv_Di = np.diag(1.0/norm)
+
+    M = np.matmul(inv_Di, L)
+    sym_M = np.matmul(Di**0.5, np.matmul(M, inv_Di**0.5))
+
+    # solve eigenvalue problem
+    eigenValues, eigenVectors = np.linalg.eigh(sym_M)
+    idx = eigenValues.argsort()[::-1]
+    eigenValues = eigenValues[idx]
+    eigenVectors = eigenVectors[:,idx]
+
+    time = epsilon*step
+    eigenScaler = np.diag(eigenValues**time)
+
+    # compute diffusion coordinates
+    diff_coords = np.matmul(np.matmul(inv_Di**0.5, eigenVectors), eigenScaler)
     
-
-
+    return diff_coords[:,:n_eigen]

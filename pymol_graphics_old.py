@@ -7,7 +7,6 @@ import math
 import copy
 import pickle
 import pymol
-from dssr_block import dssr_block
 
 AA_dict = {'CYS': 'C', 'ASP': 'D', 'SER': 'S', 'GLN': 'Q', 'LYS': 'K',
            'ILE': 'I', 'PRO': 'P', 'THR': 'T', 'PHE': 'F', 'ASN': 'N', 
@@ -48,7 +47,7 @@ class Molecules:
 
         # read data from pymol loaded struture
         #pymol.pymol_argv = ['pymol','-qc']
-        #pymol.finish_launching()
+        pymol.finish_launching()
         #pymol.cmd.log_open()
         pymol.cmd.fetch(code)
         
@@ -91,10 +90,7 @@ class Molecules:
                 elif len(resn) == 2 and resn.startswith('D'):
                     resn = resn[1:]
                 else:
-                    continue
-                    #print (resn)
-                    #pass
-                    #assert len(resn) == 1
+                    assert len(resn) == 1
                 seq += resn
             self.chain_seq[chain] = seq
 
@@ -102,75 +98,16 @@ class Molecules:
 
 
     def print_seq(self):
-        for chain in sorted(self.chain_seq.keys()):
+        for chain in self.chain_seq:
             print("chain %s" % (chain), file=sys.stderr)
             print(self.chain_seq[chain], file=sys.stderr)
 
-    def remove_ions(self):
-        # remove waters and ions
-        pymol.cmd.remove('resn hoh')
-        pymol.cmd.remove('resn mn')
-        pymol.cmd.remove('resn cl')
-        return 
-        
-
     def stylish(self):
-        # stylish DNA
-        #pymol.cmd.cartoon('oval')
-        #pymol.cmd.set('cartoon_oval_length', '1')
-        #pymol.cmd.set('cartoon_oval_width', '0.2')
-        pymol.cmd.set('cartoon_ring_mode', '3')
-        pymol.cmd.set('cartoon_ring_finder', '2')
-        pymol.cmd.set('cartoon_ring_width', '0.2')
-        pymol.cmd.dssr_block()
+        pymol.cmd.space('pymol')
+        pymol.cmd.cartoon('oval', string selection)
         
-        # turn off all reflections
-        #pymol.cmd.set('reflect', '0')
-        #pymol.cmd.set('light_count', '1')
-        #pymol.cmd.set('ambient', '1')
-
-        # cartoonish ray setting
-        pymol.cmd.hide('lines')
-        pymol.cmd.set('ray_trace_mode', '3')
-        pymol.cmd.bg_color('white')
-        pymol.cmd.set('antialias', '5')
-        ##pymol.cmd.set('ray_trace_fog', '0')
-        pymol.cmd.set('ray_shadows', '0')
-
         
-        #pymol.cmd.space('pymol')
-        #pymol.cmd.cartoon('oval', string selection)        
-        return
-
-
-    def make_sphere (self, chain_resi):
-
-        selections = []
-        for chain in chain_resi:
-            select = []
-            for resi in chain_resi[chain].keys():
-                if resi < 0:
-                    select.append('\\' + str(resi))
-                else:
-                    select.append(str(resi))
-            select = ','.join(select)
-            selections.append("(" + "chain " + chain + " and " + "resi " + select + ")")
-        selections = " or ".join(selections)
-
-        pymol.cmd.show('sphere', selections)
-        pymol.cmd.set("sphere_scale", '0.8')
-        return
-
-    def coloring (self, chain_resi, color):
-        for chain in chain_resi:
-            for resi in chain_resi[chain].keys():
-                if resi < 0:
-                    select = '\\' + str(resi)
-                else:
-                    select = str(resi)
-                pymol.cmd.color(color, "(" + "chain " + chain + " and " + "resi " + select + ")")
-        return
-        
+        return 
 
 
     def spectrum(self,
@@ -200,31 +137,11 @@ class Molecules:
             palette = "rainbow"
             
         pymol.cmd.spectrum('b', palette, selections, min, max)
-
-
-    def save_session (self, fname):
-        pymol.cmd.save("%s.pse" % (fname))
-        return
-
-    def clear_up (self):
-        pymol.cmd.delete('all')
-        return
-
-    def done (self):
-        pymol.cmd.quit()
-        return
-
     
 
-# load structure
-#NCP = Molecules("1kx5")
-#histone_chains = {'H2A':['C', 'G'], 'H2B':['D', 'H'], 'H3':['A', 'E'], 'H4':['B','F']}
-
-
 # load energy profile
-path = "/home/spark159/Projects/slide-seq/"
 fname = "mmlib_bubble_5_1rep_energy_wrt_601"
-with open(path+fname + ".pickle", "rb") as f:
+with open(fname + ".pickle", "rb") as f:
     size_dyad_shl_values = pickle.load(f,encoding='latin1')
 
 # load structure
@@ -253,23 +170,10 @@ for shl in size_dyad_shl_values[size][dyad]:
     chain_resi_value['J'][-shl] = value
 
 # make spectrum plot
-#pymol.cmd.log_open("test.pml")
-NCPandChd1.stylish()
+#pymol.cmd.log_open()
 NCPandChd1.spectrum(chain_resi_value, color_list=['white', 'red'], min=-0.5, max=3)
 #NCPandChd1.spectrum(chain_resi_value, min=-0.5, max=3)
 #pymol.cmd.log_close()
-
-pymol.cmd.hide("cartoon", "chain A")
-pymol.cmd.hide("cartoon", "chain B")
-pymol.cmd.hide("cartoon", "chain C")
-pymol.cmd.hide("cartoon", "chain D")
-pymol.cmd.hide("cartoon", "chain E")
-pymol.cmd.hide("cartoon", "chain F")
-pymol.cmd.hide("cartoon", "chain G")
-pymol.cmd.hide("cartoon", "chain H")
-pymol.cmd.hide("cartoon", "chain W")
-
-
 
 pymol.cmd.save("test.pse")
 pymol.cmd.quit()
