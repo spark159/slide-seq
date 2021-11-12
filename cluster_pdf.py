@@ -178,7 +178,7 @@ name_key_slider['Control1'] = Control1
 name_key_slider['Control2'] = Control2
 
 # PolyA library
-for condition in ['old']:
+for condition in []:
     if condition == 'old':
         path = "/home/spark159/../../media/spark159/sw/polyAlibFinal/"
     elif condition == 'new':
@@ -219,7 +219,7 @@ for condition in ['old']:
 
 # Mismatch/Indel library
 path = "/home/spark159/../../media/spark159/sw/mmlibIDlibFinal/"
-for mtype in []:
+for mtype in ['M']:
     if mtype == 'M':
         library_type = 'mm'
     elif mtype in ['I', 'D']:
@@ -325,11 +325,56 @@ for name in name_key_slider:
         key_slider[key].left_cutmap = bott_cutmap
         key_slider[key].dyadmap = dyad_map
 
+# heatmap plotting
+if True:
+    for name in name_key_slider:
+        if name.startswith('Control'):
+            continue
+        print name
+        print
+        library_type, condition, time, rep = name.split('_')
 
+        key_slider = name_key_slider[name]
+        keys = name_keys[name]
+        
+        size_keys = {}
+        for key in keys:
+            #print key
+            st, mtype, nts = key.split('-')
+            size = len(nts)
+            if size not in size_keys:
+                size_keys[size] = []
+            size_keys[size].append(key)
+
+        sample1, sample2, sample3, sample4 = [], [], [], []
+
+        for size in sorted(size_keys.keys()):
+            sample1 += size_keys[size]
+            #if size >=3 and size <=5:
+            #    sample1 += size_keys[size]
+            #elif size >=6 and size <=8:
+            #    sample2 += size_keys[size]
+            #elif size >=9 and size <=11:
+            #    sample3 += size_keys[size]
+            #else:
+            #    assert size >=12 and size <=15
+            #    sample4 += size_keys[size]
+
+        #sample_list = [sample1, sample2, sample3, sample4]
+        sample_list = [sample1]
+
+        # order by size
+        graph_edit.plot_map(key_slider, [sorted(sample, cmp=key_cmp) for sample in sample_list], norm_choice=True, obs_func = Slider.peak_signal, draw = 'key', slicing=0, note='order_by_size')
+        # order by start location
+        graph_edit.plot_map(key_slider, [sorted(sample, cmp=key_cmp_st) for sample in sample_list], norm_choice=True, obs_func = Slider.peak_signal, draw = 'key', slicing=0, note='order_by_start')
+        # order by end location
+        graph_edit.plot_map(key_slider, [sorted(sample, cmp=key_cmp_ed) for sample in sample_list], norm_choice=True, obs_func = Slider.peak_signal, draw = 'key', slicing=0, note='order_by_end')
+            
+        
 
 # clustering analysis
 fakekey = '0-M-A'
-if True:
+if False:
     name_key_cID, name_cID_keys = {}, {}
     name_outlier_cID, name_cID_outliers = {}, {}
     for name in name_key_slider:
@@ -1162,7 +1207,7 @@ if False:
 # cluster colors
 color_list = ['r', 'g', 'b', 'orange', 'm', 'c', 'darksalmon', 'navy', 'limegreen', 'skyblue', 'grey']*2
 #color_list = ['r', 'g', 'b', 'orange', 'm', 'c', 'darksalmon', 'navy', 'seagreen', 'skyblue']
-if True:
+if False:
     # draw data on pdf
 
     m, n = 10, 4 # number of rows and colums

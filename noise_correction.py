@@ -75,14 +75,14 @@ for condition in []:
 
 # Mismatch/Indel library
 path = "/home/spark159/../../media/spark159/sw/mmlibIDlibFinal/"
-for mtype in []:
+for mtype in ['M']:
     if mtype == 'M':
         library_type = 'mm'
     elif mtype in ['I', 'D']:
         library_type = 'ID'
     for condition in ['bubble']:
         for time in [0, 5]:
-            for rep in [1, 2]:
+            for rep in [1]:
                 fname = "%slib_%s_%s_%srep" % (library_type, condition, time, rep)
                 try:
                     with open(fname + ".pickle", "rb") as f:
@@ -96,7 +96,7 @@ for mtype in []:
 
 # Plusone library
 path = "/home/spark159/../../media/spark159/sw/all_slide_seq_data/"
-for condition in ['new:corrected']:
+for condition in []:
     for time in [0, 30]:
         fname = "%slib_%s_%s" % ('plusone', condition, time)
         if condition =='old' and time == 0:
@@ -196,6 +196,7 @@ for name in name_key_slider:
 #graph.plot_map(key_slider7, sample_list, norm_choice=True, draw_key=True, note='_mmlib_bubble_5_1rep')
 #graph.plot_map(key_slider8, sample_list, norm_choice=True, draw_key=True, note='_mmlib_bubble_5_2rep')
 
+"""
 sample_mode = "r:30"
 sample_list = sample.sampling(name_key_slider['plusonelib_new:corrected_0'], sample_mode)
 sub_sample_list = []
@@ -210,17 +211,19 @@ for name, key_slider in name_key_slider.items():
     graph_edit.plot_map(key_slider, sample_list, True, Slider.peak_signal, slicing=0, note='_' + name)
     #sample_list = [[choice] for choice in random.sample(sample_list[0], 10)]
     graph_edit.plot_signal (key_slider, sub_sample_list, True, Slider.get_dyadmap, mean_choice=False, slicing = 0, note = "_" + name)
-
 """
+
 # draw data on pdf
-m, n = 5, 2 # number of rows and colums
+m, n = 10, 4 # number of rows and colums
 for name, key_slider in name_key_slider.items():
+    if name.startswith('Control'):
+        continue
     print name
     print
     pdf = matplotlib.backends.backend_pdf.PdfPages(name + ".pdf")
     keys = name_keys[name]
     page_nums = int(math.ceil(len(keys)/float(m*n))) # number of pages
-    #page_nums = 10
+    #page_nums = 1
     for i in range(page_nums):
         fig = plt.figure(figsize=(15,20))
         #fig = plt.figure(figsize=(8.27, 11.69), dpi=100)
@@ -230,19 +233,19 @@ for name, key_slider in name_key_slider.items():
             top_cutmap, bott_cutmap = key_slider[key].right_cutmap, key_slider[key].left_cutmap
             dyad_map = [value*0.5 for value in key_slider[key].dyadmap]
             plt.subplot(m, n, j+1)
-            plt.plot(top_cutmap, '-', label='Top', alpha=0.5)
-            plt.plot(bott_cutmap, '-', label='Bottom', alpha=0.5)
-            plt.plot(dyad_map, label='Dyad')
+            #plt.plot(top_cutmap, '-', label='Top', alpha=0.5)
+            #plt.plot(bott_cutmap, '-', label='Bottom', alpha=0.5)
+            #plt.plot(dyad_map, label='Dyad')
             #plt.hist(dyad_map, 100)
+            plt.plot(dyad_map, 'k-', label=key)
             loc, mtype, nts = key.split('-')
             st = int(loc)
             ed = st+len(nts)
             plt.axvspan(st, ed-1, alpha=0.5, color='red')
-            plt.title(key)
-            plt.legend(loc='upper right', frameon=False)
+            #plt.title(key)
+            leg = plt.legend(loc='upper right', frameon=False)
             plt.xlim([0,225])
             j +=1
         pdf.savefig(fig)
         plt.close()
     pdf.close()
-"""

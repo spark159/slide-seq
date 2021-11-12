@@ -35,19 +35,19 @@ def read_DNAshape(fname, id_seq):
 class Slider:
     
     def __init__(self,
-                id,
-                ref_length,
-                dyad_axis,
-                left_offset,
-                right_offset,
-                seq,
-                dyadmap,
-                left_cutmap,
-                right_cutmap,
-                MGW,
-                HelT,
-                ProT,
-                Roll):
+                 id,
+                 ref_length,
+                 dyad_axis,
+                 left_offset,
+                 right_offset,
+                 seq,
+                 dyadmap,
+                 left_cutmap,
+                 right_cutmap,
+                 MGW,
+                 HelT,
+                 ProT,
+                 Roll):
         
         self.id = id
         self.ref_length = ref_length

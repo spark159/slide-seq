@@ -67,6 +67,8 @@ def load_files(filenames,
                 read_id, type, mapped_id, cutloc, seq = line.strip().split()
                 if type not in choice:
                     continue
+                if mapped_id == 'BACKBONE':
+                    continue
 
                 cols = cutloc.split(':')
                 if int(cols[1]) < 0 or int(cols[1]) >= ref_length:

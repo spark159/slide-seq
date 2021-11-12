@@ -1,143 +1,414 @@
 import os, sys, subprocess, re
+import matplotlib.backends.backend_pdf
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+from matplotlib import colors
 import numpy as np
 import seaborn as sns
 import random  
 import math
 import pandas as pd
 import copy
-import analysis
+import analysis_final as analysis
 from sklearn.neighbors import KernelDensity
 from mpl_toolkits.axes_grid1 import AxesGrid
+import matplotlib.ticker as tck
 
-ref_length = 225
-dyad_axis = (1+ref_length)/2 -1  
+# plot (stacked) heatmap for 1-d signal observables of sliders
+def plot_map(id_slider,
+             obs_func,
+             ids=[],
+             xticks=None,
+             norm=True,
+             thickness=None,
+             mark=None,
+             cmap='jet',
+             mcolor='red',
+             slicing=0,
+             note="",
+             save=False,
+             *args):
 
-def key_cmp(a, b):
-    if a[0] <= b[0]:
-        return -1
+    if len(ids) <= 0:
+        ids = sorted(id_slider.keys(), cmp=analysis.wid_cmp_len)
+
+    if type(obs_func) != list:
+        obs_funcs = [obs_func]
     else:
-        return 1
+        obs_funcs = obs_func
 
-def value_cmp(a, b):
-    if a[1] <= b[1]:
-        return -1
+    if type(cmap) != list:
+        cmaps = [cmap]*len(obs_funcs)
     else:
-        return 1
+        cmaps = cmap
 
-def GC_content(seq):
-    num=0.0
-    for nt in seq:
-        if nt in 'GC':
-            num+=1
-    return (num/float(len(seq)))*100
-
-def Amer_len(seq, pos=False):
-    num = []
-    num_pos = {}
-    i = 0
-    while i < len(seq):
-        if seq[i] in 'AT':
-            nt = seq[i]
-            count = 1
-            j = i + 1
-            while j < len(seq):
-                if seq[j] != nt:
-                    break
-                count +=1
-                j +=1
-            num.append(count)
-            if count not in num_pos:
-                num_pos[count] = []
-            num_pos[count].append(i)
-            i = j
+    if thickness == None:
+        if len(ids) <= 50:
+            strip, space, marker = 10, 5, 2
         else:
-            i +=1
-    if pos:
-        return num_pos
-    if len(num) == 0:
-        return 0
-    return max(num)
-
-def create_map(cuts, N=ref_length):
-    map=[0.0]*N
-    #total = 0.0
-    for loc in cuts:
-        map[loc] +=1
-        #total+=1
-    #global dyad_axis
-    return map
-
-def normalize (img):
-    total=0.0
-    new = [[0]*len(img[0]) for i in range(len(img))]
-    for i in range(len(img)):
-        for j in range(len(img[i])):
-            total += img[i][j]
-    if total <= 0:
-        return new
-    for i in range(len(img)):
-        for j in range(len(img[i])):
-            new[i][j] = (img[i][j]/float(total))*100
-    return new
-
-def sub_background (map, frac=0.1):
-    thres= min(map) + frac*(max(map)-min(map))
-    new = [0 for i in range(len(map))]
-    for i in range(len(map)):
-        if map[i] > thres:
-            new[i] = map[i]
-    return new
-
-def find_peaks(map, back= False, num=1):
-    nmap = map
-    if back:
-        nmap = sub_background(map)
-
-    peak_sig={}
-    for i in range(1, len(nmap)-1):
-        if nmap[i] > nmap[i-1] and nmap[i] > nmap[i+1]:
-            peak_sig[i] = nmap[i]
-
-    peak_sig=[[peak, sig]  for peak, sig in peak_sig.items()]
-    peak_sig=sorted(peak_sig, cmp=value_cmp, reverse=True)
-
-    peaks=[]
-    for i in range(min(len(peak_sig), num)):
-        peaks.append(peak_sig[i])
-    return peaks
-
-def write_FASTA (seq_list, filename):
-    f = open(filename + '.fasta', 'w')
-    for i in range(len(seq_list)):
-        print >> f, '>%d' % (i)
-        print >> f, seq_list[i]
-    f.close()
-
-def get_hist (data, binnum=1000, prob=False):
-    hist={};
-    if prob:
-        deno=float(len(data))
+            if mark:
+                strip, space, marker = 2, 0, 1
+            else:
+                strip, space, marker = 1, 0, 0
     else:
-        deno=1.0
-    binwidth=float(max(data)-min(data))/binnum
-    for value in data:
-        bin=int((value-min(data))/binwidth)
-        bincenter=min(data)+(bin+0.5)*binwidth
-        if bincenter not in hist:
-            hist[bincenter]=0
-        hist[bincenter]+=1/deno
-    return hist
+        strip, space, marker = thickness
 
-def all_path(N, states='AC'):
-    if N==1:
-        return list(states)
-    output=[]
-    for path in all_path(N-1):
-        for state in states:
-            output.append(path+state)
-    return output
+    substrip = int(math.ceil(float(strip)/len(obs_funcs)))
+
+    # make stack of images
+    img_stack = [[] for i in range(len(obs_funcs))]
+
+    for i in range(len(img_stack)):
+        img = img_stack[i]
+        
+        for j in range(len(ids)):
+            id = ids[j]
+            slider = id_slider[id]
+            obs_sig = obs_funcs[i](slider, *args)
+            obs_sig = obs_sig[slicing:len(obs_sig)-slicing]
+
+            if norm:
+                obs_sig = analysis.normalize_list(obs_sig)
+
+            for k in range(len(img_stack)*substrip):
+                if k >= i*substrip and k < (i+1)*substrip:
+                    img.append(obs_sig)
+                else:
+                    img.append([np.nan]*len(obs_sig))
+
+            if j < len(ids)-1:
+                for k in range(space):
+                    img.append([np.nan]*len(obs_sig))
+
+    # make marker image
+    if mark:
+        mark_img = []
+        
+        for j in range(len(ids)):
+            id = ids[j]
+            slider = id_slider[id]
+            obs_sig = obs_funcs[0](slider, *args)
+            mark_sig = np.zeros(len(obs_sig))
+            mark_sig[:] = np.nan
+
+            if mark == 'wid':
+                loc, mtype, nts = id.split('-')
+                size, loc = len(nts), int(loc)
+                st, ed = loc, loc+size
+                mark_sig[st:ed] = 1
+
+            elif mark.startswith('poly'):
+                try:
+                    nts = mark.split('-')[1].split(':')[0]
+                    nts += analysis.rev_comp(nts)
+                except:
+                    nts = 'AT'
+                try:
+                    _, minlen = mark.split(':')
+                    minlen = int(minlen)
+                except:
+                    minlen = 5
+
+                len_pos = slider.polynt_count(nts='AT', pos=True)
+                for length, pos in len_pos.items():
+                    if length >= minlen:
+                        for loc in pos:
+                            mark_sig[loc:loc+length] = 1
+
+            mark_sig = mark_sig[slicing:len(mark_sig)-slicing]
+
+            for k in range(len(img_stack)*substrip):
+                if k < marker:
+                    mark_img.append(mark_sig)
+                else:
+                    mark_img.append([np.nan]*len(mark_sig))
+
+            if j < len(ids)-1:
+                for k in range(space):
+                    mark_img.append([np.nan]*len(mark_sig))
+
+    fig = plt.figure()
+    height, width = np.shape(img_stack[0])
+    fig.set_size_inches(float(width)/100, float(height)/100, forward = False)
+    ax = plt.subplot(111, aspect = 'equal')
+    plt.subplots_adjust(left=0, bottom=0.3/(float(height)/100), right=1, top=1, wspace=0, hspace=0)
+    ax.spines['top'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    plt.tick_params(top='off', left='off', right='off', labelleft='off', labelbottom='on', labelsize=6)
+
+    for img, cmap in zip(img_stack, cmaps):
+        colormap = cm.get_cmap(cmap)
+        colormap.set_bad(alpha=0)
+        ax.imshow(img, cmap=colormap, interpolation='none')
+
+    if mark:
+        colormap = colors.ListedColormap([mcolor])
+        colormap.set_bad(alpha=0)
+        ax.imshow(mark_img, cmap=colormap, interpolation='none')
+
+    if xticks:
+        ax.set_xticks(xticks[0])
+        ax.set_xticklabels(xticks[1])
+        ax.xaxis.set_minor_locator(tck.AutoMinorLocator(2))
+
+    #plt.tight_layout()
+
+    if save:
+        plt.savefig('Heatmap' + note + '.png', dpi=1000)
+    else:
+        plt.show()
+
+    plt.close()
+
+    if len(img_stack) <= 1:
+        return img_stack[0]
+    return img_stack
+
+# plot (stacked) 1-d signal observables of sliders
+def plot_sig(id_slider,
+             obs_func,
+             ids = [],
+             row=10,
+             col=4,
+             norm=False,
+             mark=None,
+             color=None,
+             label=None,
+             alpha=None,
+             xticks=None,
+             yticks=None,
+             xlims=[None, None],
+             ylims=[None, None],
+             frame_color='k',
+             note="",
+             save=False,
+             *args):
+
+    if len(ids) <= 0:
+        ids = sorted(id_slider.keys(), cmp=analysis.wid_cmp_len)
+
+    if type(obs_func) != list:
+        obs_funcs = [obs_func]
+    else:
+        obs_funcs = obs_func
+
+    if type(color) != list:
+        colors = [color]*len(obs_funcs)
+    else:
+        colors = color
+
+    if type(alpha) != list:
+        alphas = [alpha]*len(obs_funcs)
+    else:
+        alphas = alpha
+
+    if type(label) != list:
+        labels = [label]*len(obs_funcs)
+    else:
+        labels = label
+
+    page_nums = int(math.ceil(len(ids)/float(row*col))) # number of pages
+
+    if save == True:
+        if page_nums > 1:
+            save = 'pdf'
+        else:
+            save = 'png'
+    
+    if save == 'pdf':
+        pdf = matplotlib.backends.backend_pdf.PdfPages('Signals' + note + ".pdf")
+
+    #page_nums = 1
+    for i in range(page_nums):
+        fig = plt.figure(figsize=(15,20))
+        j = 0
+        while j < min(row*col, len(ids)-row*col*i):
+            id = ids[row*col*i + j]
+            slider = id_slider[id]
+            
+            plt.subplot(row, col, j+1)
+            ax = plt.gca()
+            ax.spines['bottom'].set_color(frame_color)
+            ax.spines['top'].set_color(frame_color)
+            ax.spines['left'].set_color(frame_color)
+            ax.spines['right'].set_color(frame_color)
+
+            for obs_func, color, alpha, label in zip(obs_funcs, colors, alphas, labels):
+                sig = obs_func(slider, *args)
+                if norm:
+                    sig = analysis.normalize_list(sig)
+                plt.plot(sig, color=color, alpha=alpha, label=label)
+
+            if mark == 'wid':
+                loc, mtype, nts = id.split('-')
+                size, loc = len(nts), int(loc)
+                st, ed = loc, loc+size
+                plt.axvspan(st, ed-1, alpha=0.5, color='red')
+
+            elif mark != None and mark.startswith('poly'):
+                try:
+                    nts = mark.split('-')[1].split(':')[0]
+                    nts += analysis.rev_comp(nts)
+                except:
+                    nts = 'AT'
+                try:
+                    _, minlen = mark.split(':')
+                    minlen = int(minlen)
+                except:
+                    minlen = 5
+                    
+                len_pos = slider.polynt_count(nts='AT', pos=True)
+                for length, pos_list in len_pos.items():
+                    if length < minlen:
+                        continue
+                    for pos in pos_list:
+                        st, ed = pos, pos+length
+                        plt.axvspan(st, ed-1, alpha=0.5, color='red')
+            
+            if mark == 'wid':
+                plt.title(id + '(%dbp)' % (size))
+            else:
+                plt.title(id)
+
+            if xticks:
+                plt.xticks(xticks[0], xticks[1])
+                plt.tick_params(axis='x', labelsize=8)
+                ax.xaxis.set_minor_locator(tck.AutoMinorLocator(2))
+            if yticks:
+                plt.yticks(yticks[0], yticks[1])
+
+            plt.legend(loc='upper right', frameon=False)
+                
+            plt.xlim(xlims)
+            plt.ylim(ylims)
+            j +=1
+
+        fig.tight_layout()
+        if save == 'pdf':
+            pdf.savefig(fig)
+        elif save == 'png':
+            plt.savefig('Signals' + note + '_' + str(i+1) + '.png', dpi=1000)
+        else:
+            plt.show()
+        plt.close()
+
+    if save == 'pdf':
+        pdf.close()
+
+    
+
+
+"""
+# plot heatmap for 1-d signal observables of sliders
+def plot_map(id_slider,
+             obs_func,
+             ids=[],
+             norm=True,
+             thickness=None,
+             mark=None,
+             cmap='jet', 
+             slicing=0,
+             note="",
+             save=False,
+             *args):    
+
+    if len(ids) <= 0:
+        ids = analysis.sorted(id_slider.keys(), cmp=analysis.wid_cmp_len)
+
+    if thickness == None:
+        if len(ids) <= 50:
+            strip, space, marker = 10, 5, 2
+        else:
+            if mark:
+                strip, space, marker = 2, 0, 1
+            else:
+                strip, space, marker = 1, 0, 0
+    else:
+        strip, space, marker = thickness
+
+        
+    img = []
+
+    for i in range(len(ids)):
+        id = ids[i]
+        slider = id_slider[id]
+        tmp_img = []
+        obs_map = obs_func(slider, *args)
+
+        if mark == 'wid':
+            loc, mtype, nts = id.split('-')
+            size, loc = len(nts), int(loc)
+            st, ed = loc, loc+size
+            mark_map = np.zeros(len(obs_map))
+            mark_map[st:ed] = [np.nan] * size
+
+        if mark.startswith('poly'):
+            try:
+                nts = mark.split('-')[1].split(':')[0]
+                nts += analysis.rev_comp(nts)
+            except:
+                nts = 'AT'
+            try:
+                _, minlen = mark.split(':')
+                minlen = int(minlen)
+            except:
+                minlen = 5
+
+            len_pos = slider.polynt_count(nts='AT', pos=True)
+            mark_map = np.zeros(len(obs_map))
+            for length, pos in len_pos.items():
+                if length >= minlen:
+                    for loc in pos:
+                        mark_map[loc:loc+num] = [np.nan] * length
+
+        obs_map = obs_map[slicing:len(obs_map)-slicing]
+        if mark:
+            mark_map = mark_map[slicing:len(mark_map)-slicing]
+
+        for k in range(strip):
+            tmp_img.append(obs_map)
+
+        if norm:
+            tmp_img = normalize_matrix(tmp_img)
+
+        for k in range(len(tmp_img)):
+            row = tmp_img[k]
+            if mark and k < marker:
+                img.append(np.asarray(row) + mark_map)
+            else:
+                img.append(row)
+
+        if i < len(id_list)-1:
+            for k in range(space):
+                img.append([0]*len(obs_map))            
+
+    fig = plt.figure()
+    height, width = np.shape(img)
+    fig.set_size_inches(float(width)/100, float(height)/100, forward = False)
+    ax = plt.subplot(111, aspect = 'equal')
+    plt.subplots_adjust(left=0, bottom=0.3/(float(height)/100), right=1, top=1, wspace=0, hspace=0)
+    ax.spines['top'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    plt.tick_params(top='off', left='off', right='off', labelleft='off', labelbottom='on')
+    #ax.set_xticks(range(0, width, 5))
+    #ax.set_xticklabels([str(i+1) for range(0, width, 5)])
+
+    colormap = cm.get_cmap(cmap)
+    if mark:
+        colormap.set_bad((1, 0, 0, 1)) # red marker
+
+    ax.imshow(img, cmap=colormap, interpolation='none')
+
+    if save:
+        plt.savefig('Heatmap' + note + '.png', dpi=1000)
+    else:
+        plt.show()
+
+    plt.close()
+    return img
+
 
 # plot cut/dyad map
 def plot_map(key_slider, sample_list, norm_choice, note = "", draw_key=False, draw_vert=False):    
@@ -308,131 +579,52 @@ def plot_map(key_slider, sample_list, norm_choice, note = "", draw_key=False, dr
         #plt.show()
         plt.close()
 
-# plot average cut/dyad signal
-def plot_signal (key_slider, sample_list=None, KDE = False, show_key = False, note=""):
+
+        
+# plot observable signal
+def plot_signal (key_slider, sample_list, norm_choice, obs_func, mean_choice=False, draw = None, slicing = 0, note = "", *args ):
     if sample_list == None:
         sample_list = [key_slider.keys()]
     for i in range(len(sample_list)):
         key_list = sample_list[i]
-        av_lcutmap, av_rcutmap, av_dyadmap = None, None, None
-        
+        obs_list = []
         for j in range(len(key_list)):
             key = key_list[j]
             slider = key_slider[key]
-            lcut_map = slider.left_cutmap
-            rcut_map = slider.right_cutmap
-            dyad_map = slider.dyadmap
-
-            if not av_lcutmap:
-                av_lcutmap = lcut_map
-            else:
-                av_lcutmap = [av_lcutmap[k]+lcut_map[k] for k in range(len(lcut_map))]
-            if not av_rcutmap:
-                av_rcutmap = rcut_map
-            else:
-                av_rcutmap = [av_rcutmap[k]+rcut_map[k] for k in range(len(rcut_map))]
-            if not av_dyadmap:
-                av_dyadmap = dyad_map
-            else:
-                av_dyadmap = [av_dyadmap[k]+dyad_map[k] for k in range(len(dyad_map))]
-
-        av_lcutmap = [av_lcutmap[l]/len(key_list) for l in range(len(av_lcutmap))]
-        av_rcutmap = [av_rcutmap[l]/len(key_list) for l in range(len(av_rcutmap))]
-        av_dyadmap = [av_dyadmap[l]/len(key_list) for l in range(len(av_dyadmap))]
-        
-
-        av_lcutpeaks = find_peaks(av_lcutmap)
-        av_rcutpeaks = find_peaks(av_rcutmap)
-        av_dyadpeaks = find_peaks(av_dyadmap)
-
-        global dyad_axis
-        
+            obs = obs_func(slider, *args)
+            if norm_choice:
+                obs = normalize([obs], percentage=False)[0]
+            obs = np.asarray(obs)
+            obs_list.append(obs)
+        if mean_choice:
+            obs_list = [np.sum(obs_list, axis=0)/len(key_list)]
+        global dyad_axis        
         fig = plt.figure()
-        plt.plot(range(len(av_rcutmap)), av_rcutmap, label='Top')
-        #av_lcutmap = [-e for e in av_lcutmap]
-        plt.plot(range(len(av_lcutmap)), av_lcutmap, label='Bottom')
-        plt.axvline(dyad_axis, color='k', linestyle='--')
-        for peak in av_rcutpeaks:
-            plt.plot(peak[0], peak[1], color='r', marker='o')
-        for peak in av_lcutpeaks:
-            #plt.plot(peak[0], -peak[1], color='r', marker='o')
-            plt.plot(peak[0], peak[1], color='r', marker='o')
-        if show_key:
-            """
-            left = "ATCCGACTGGCACCGGCAAGGTCGCTGTTCGCCACATGCGCAGGAT"
-            right = "TCTCCAGGGCGTCCTCGTATAGGGTCCATCACATAAGGGATGAACT"
-            ref = "GTATATATCTGACACGTGCCTGGAGACTAGGGAGTAATCCCCTTGGCGGTTAAAACGCGGGGGACAGCGCGTACGTGCGTTTAAGCGGTGCTAGAGCTGTCTACGACCAATTGAGCGGCCTCGGCACCGGGAT"
-            ref = left+ref+right
-            num_pos = Amer_len(ref, pos=True)
-            print num_pos
-            num_list = sorted(num_pos.keys())
-            for num in num_list:
-                if num <= 2:
-                    continue
-                for st in num_pos[num]:
-                    ed = st + num
-                    plt.axvspan(st, ed-1, alpha=0.5, color='red')
-            """
-            #win, st = key.split('-')
+        for k in range(len(obs_list)):
+            if mean_choice:
+                label = 'mean:'+str(key_list[0])+'-'+str(key_list[-1])
+            else:
+                label = key_list[k]
+            plt.plot(obs, label=label)
+        if draw == 'key':
             loc, mtype, nts = key.split('-')
-            win, loc = len(nts), int(loc)
-            st = int(st)
-            #ed = st + int(win)
-            ed = st+len(win)
+            size, loc = len(nts), int(loc)
+            st, ed = loc, loc+size
             plt.axvspan(st, ed-1, alpha=0.5, color='red')
+        if draw == 'polyA':
+            num_pos = slider.Amer_len_detail()
+            for num, pos in num_pos.items():
+                if num >= 3:
+                    for loc in pos:
+                        st, ed = loc, loc+num
+                        plt.axvspan(st, ed-1, alpha=0.5, color='red')
+        plt.axvline(dyad_axis, color='k', linestyle='--')
         plt.xlim([0,225])
-        plt.xlabel('Cut site (bp)')
-        plt.ylabel('Counts')
+        plt.xlabel('Location (bp)')
+        plt.ylabel('Signal')
         plt.legend(loc='best')
         #plt.show()
-        plt.savefig('cutsig_cond' + str(i+1) + note + '.png', bbox_inches = 'tight')
-        plt.close()
-
-        fig = plt.figure()
-        #plt.plot(range(len(av_dyadmap)), av_dyadmap, label='condition ' + str(i+1))
-        plt.plot(range(len(av_dyadmap)), av_dyadmap, label=note)
-        if KDE:
-            X, X_plot = [], []
-            for k in range(len(av_dyadmap)):
-                for num in range(int(round(av_dyadmap[k]))):
-                    X.append([k])
-                X_plot.append([k])
-            kde = KernelDensity(kernel="gaussian", bandwidth=0.5).fit(X)
-            log_density = kde.score_samples(X_plot)
-            plt.plot(range(len(av_dyadmap)), np.exp(log_density)*len(X), label='KDE ' + str(i+1))
-            plt.plot(range(len(av_dyadmap)), -log_density, label='KDE ' + str(i+1))
-        plt.axvline(dyad_axis, color='k', linestyle='--')
-        if show_key:
-            """
-            left = "ATCCGACTGGCACCGGCAAGGTCGCTGTTCGCCACATGCGCAGGAT"
-            right = "TCTCCAGGGCGTCCTCGTATAGGGTCCATCACATAAGGGATGAACT"
-            ref = "GTATATATCTGACACGTGCCTGGAGACTAGGGAGTAATCCCCTTGGCGGTTAAAACGCGGGGGACAGCGCGTACGTGCGTTTAAGCGGTGCTAGAGCTGTCTACGACCAATTGAGCGGCCTCGGCACCGGGAT"
-            ref = left+ref+right
-            num_pos = Amer_len(ref, pos=True)
-            #print num_pos
-            num_list = sorted(num_pos.keys())
-            for num in num_list:
-                if num <= 2:
-                    continue
-                for st in num_pos[num]:
-                    ed = st + num
-                    plt.axvspan(st, ed-1, alpha=0.5, color='red')
-            """
-            #win, st = key.split('-')
-            loc, mtype, nts = key.split('-')
-            win, loc = len(nts), int(loc)
-            st = int(st)
-            #ed = st + len(win)
-            ed = st+len(win)
-            plt.axvspan(st, ed-1, alpha=0.5, color='red')
-        #for peak in av_dyadpeaks:
-        #    plt.plot(peak[0], peak[1], color='r', marker='o')
-        plt.xlim([0,225])
-        plt.xlabel('Dyad position (bp)')
-        plt.ylabel('Counts')
-        plt.legend(loc='best')
-        #plt.show()
-        plt.savefig('dyadsig_cond' + str(i+1) + note + '.png', bbox_inches = 'tight')
+        plt.savefig('sig_fig' + str(i+1) + note + '.png', bbox_inches = 'tight')
         plt.close()
 
 # plot SeqID vs cut peaks
@@ -483,7 +675,7 @@ def plot_cpeaks (key_slider, left_peak_num = 1, right_peak_num = 1, sample_list=
         plt.savefig('SeqID_cpeak_location_' + 'cond' + str(i+1) + '.png')
         plt.close()
         
-        """
+        
         Amer_lpeaks = [[Amer_len(key), lpeak] for key, lpeak in key_lpeaks]
         Amer_rpeaks = [[Amer_len(key), rpeak] for key, rpeak in key_rpeaks]
         Amer_lpeaks = sorted(Amer_lpeaks, cmp=key_cmp)
@@ -507,7 +699,7 @@ def plot_cpeaks (key_slider, left_peak_num = 1, right_peak_num = 1, sample_list=
         plt.ylabel('Cut Peak location')
         plt.savefig('SeqID_cpeak_location_' + 'cond' + str(i+1) + note + '.png')
         plt.close()
-        """
+        
 
 # plot SeqID vs dyad peaks
 def plot_dpeaks (key_slider, peak_num = 1, st_rank = 1, sample_list=None, note=""):
@@ -545,7 +737,7 @@ def plot_dpeaks (key_slider, peak_num = 1, st_rank = 1, sample_list=None, note="
         plt.savefig('SeqID_dpeak_location_' + 'cond' + str(i+1) + '.png')
         plt.close()
 
-        """
+        
         Amer_peaks = [[Amer_len(key), peaks] for key, peaks in key_peaks]
         Amer_peaks = sorted(Amer_peaks, cmp=key_cmp)
         y = [[] for k in range(peak_num)]
@@ -559,7 +751,7 @@ def plot_dpeaks (key_slider, peak_num = 1, st_rank = 1, sample_list=None, note="
         plt.ylabel('Dyad Peak location')
         plt.savefig('SeqID_dpeak_location_' + 'cond' + str(i+1) + note + '.png')
         plt.close()
-        """
+        
         
 # plot correlation between seq observable and sig observable        
 def plot_corr (key_slider, obs_func1, obs_func2, sample_list=None, xlabel="", ylabel=""):    
@@ -629,7 +821,7 @@ def plot_corr (key_slider, obs_func1, obs_func2, sample_list=None, xlabel="", yl
         plt.close()
 
 # plot correlation between seq observable and sig observable (combined all)
-def plot_corr2 (key_slider, obs_func1, obs_func2, sample_list=None, sample_labels=None, xlabel="", ylabel="", note=""):    
+def plot_corr2 (key_slider, obs_func1, obs_func2, sample_list=None, sample_labels=None, xlabel="", ylabel=""):    
     def get_corr(x, y):
         assert len(x) == len(y)
         n = len(x)
@@ -653,7 +845,6 @@ def plot_corr2 (key_slider, obs_func1, obs_func2, sample_list=None, sample_label
         sample_labels = [None] * len(sample_list)
 
     color_list = ['r','b']
-    cmap_list = ['Reds', 'Blues']
         
     for i in range(len(sample_list)):
         key_list = sample_list[i]
@@ -674,7 +865,7 @@ def plot_corr2 (key_slider, obs_func1, obs_func2, sample_list=None, sample_label
         print "%s VS %s correlation: %f" % (xlabel, ylabel, get_corr(X,Y))
         plt.figure(1)
         plt.plot(X,Y, '.', color=color_list[i], markersize=7, alpha=0.3, label=sample_labels[i])
-        sns.kdeplot(X,Y, shade=False, shade_lowest=False, cmap=cmap_list[i], alpha=0.7)
+        sns.kdeplot(X,Y, shade=False, shade_lowest=False)
 
         #fig = plt.figure()
         #sns.lmplot(x=xlabel, y=ylabel, data=data_frame)
@@ -700,19 +891,19 @@ def plot_corr2 (key_slider, obs_func1, obs_func2, sample_list=None, sample_label
     plt.xticks(fontsize=15)
     plt.yticks(fontsize=15)
     plt.xlim([-5,30])
-    plt.ylim([-30,30])
+    plt.ylim([-20,20])
     leg = plt.legend(loc='best', numpoints=1, prop={'size': 15})
     for lh in leg.legendHandles:
         lh._legmarker.set_markersize(15)
         lh._legmarker.set_alpha(1)
-    plt.savefig(xlabel + 'VS' + ylabel + '_scatter_' + note + '.png')
+    plt.savefig(xlabel + 'VS' + ylabel + '_scatter_' + '.png')
     plt.close()
     
     plt.figure(2)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.legend()
-    plt.savefig(xlabel + 'VS' + ylabel + '_' + note + '.png')
+    plt.savefig(xlabel + 'VS' + ylabel + '.png')
     plt.close()
 
 
@@ -803,10 +994,9 @@ def plot_energy (key_slider1, key_slider2,  sample_list=None, note=""):
         
         for j in range(len(key_list)):
             key = key_list[j]
-            #win, loc = key.split('-')
-            #size, loc = len(win), int(loc)
-            loc, mtype, nts = key.split('-')
-            size, loc = len(nts), int(loc)
+            #size, loc = key.split('-')
+            win, loc = key.split('-')
+            size, loc = len(win), int(loc)
             st, ed = loc, loc+size
             
             slider1, slider2 = key_slider1[key], key_slider2[key]
@@ -1008,7 +1198,7 @@ def plot_heatmap4 (map_list, dim, cmap_list, vmin_list, vmax_list, aspect_list =
             for x in hlines:
                 ax.axhline(x, color='k', linestyle='--', linewidth=2)
 
-        """
+        
         if upticks_list and i == 0:
             upticks = upticks_list[i]
             ax2 = ax.twiny()
@@ -1019,7 +1209,7 @@ def plot_heatmap4 (map_list, dim, cmap_list, vmin_list, vmax_list, aspect_list =
             ax2.set_xlim(ax.get_xlim())
             ax2.set_xticks(upticks[0])
             ax2.set_xticklabels(upticks[1])
-        """
+        
         #grid.cbar_axes[i].colorbar(im)
     #ax.set_xticks(xticks[0])
     #ax.set_xticklabels(xticks[1])
@@ -1202,3 +1392,4 @@ def plot_weblogo(seq_list, note=''):
     weblogo_cmd = ["weblogo", "-f", 'temp.fasta', '-o', 'weblogo_' + note + '.png', '-F', 'png']
     subprocess.call(weblogo_cmd)
     os.system("rm %s" % ('temp.fasta'))
+"""

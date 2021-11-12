@@ -239,6 +239,7 @@ def plot_map(key_slider, sample_list, norm_choice, obs_func, draw = None, slicin
         ax.imshow(obs_img, cmap=cmap, interpolation='none')
         #plt.savefig('obs_cond' + str(i+1) + note + '.png', dpi=1500)
         plt.savefig('obs_cond' + str(i+1) + note + '.png', dpi=1000)
+        #plt.show()
         plt.close()
     return obs_img
 

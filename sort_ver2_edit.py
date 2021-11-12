@@ -26,6 +26,18 @@ def sort_seqs (read_fname,
     
     # seq alignment
     aligner_cmd=["bowtie2", '-x', bt_fname, '-U', read_fname ]
+    aligner_cmd += ['--mp',  '4,4', '--rdg', '5,4', '--rfg', '6,5'] # focus on insertion
+    aligner_cmd += ['--mp',  '4,4', '--rdg', '6,5', '--rfg', '5,4'] # focus on deletion
+    #aligner_cmd += ['-a']
+    #aligner_cmd += ['--very-sensitive']
+    #aligner_cmd += ['--end-to-end']
+    #aligner_cmd += ['-D', '50', '-R', '10', '-N', '1', '-L', '5', '-i', 'S,1,0.50']
+    #aligner_cmd += ['--skip', str(0)]
+    #aligner_cmd += ['-N', str(1)]
+    aligner_cmd += ["--gbar", str(1)]
+    
+    #aligner_cmd += ['--very-sensitive']
+    #aligner_cmd += ['-N', str(1), '-L', str(1), '-i',  'S,1,0'] # turn off heuristic seeding
     #aligner_cmd += ['--n-ceil', 'L,'+str(insert_len)+','+str(0.15)]
     align_proc = subprocess.Popen(aligner_cmd, stdout=subprocess.PIPE,stderr=open("/dev/null", 'w'))
 
@@ -43,10 +55,11 @@ def sort_seqs (read_fname,
 
         cols = line.strip().split()
         read_id, flag, ref_id, pos, mapQ, cigar_str = cols[:6]
-        read_id=":".join(read_id.split(':')[3:7])
+        read_id=":".join(read_id.split(':')[3:8])
         read_count +=1
         flag, pos = int(flag), int(pos)
         pos-=1
+        
 
         # invalid: mapping failure
         if pos < 0:
@@ -56,23 +69,37 @@ def sort_seqs (read_fname,
             type = 'mutant'
             #continue
 
-        # invalid: ambiguous mapping
-        #mapQ = float(mapQ)
-        #if mapQ < 10:
-        #    type = 'invalid:multimap'
         
         read_seq, qual =cols[9:11]
         ref_id = ref_id.strip()    
 
-        AS,NM,MD = None, None, None
+        AS,XS,NM,MD = None, None, None, None
         for i in range(11, len(cols)):
             col = cols[i]
             if col.startswith('AS'):
                 AS = int(col[5:])
+            elif col.startswith('XS'):
+                XS = int(cols[5:])
             elif col.startswith('NM'):
                 NM = int(col[5:])
             elif col.startswith('MD'):
                 MD = col[5:]
+
+        ## invalid: ambiguous mapping
+        #mapQ = float(mapQ)
+        #if mapQ < 42:
+        #    print mapQ
+        #    print read_seq
+        #    print
+        #    type = 'invalid:multimap'
+
+                
+        ## ambiguous mapping (multiple best alignments)
+        #if XS !=None and XS >= AS:
+        #    print read_seq
+        #    type = 'unIden'
+        #    print >> seq_sort_fname, "%s\t%s\t%s\t%s\t%s" % (read_id, type, hit, cut_loc, read_seq)
+        #    continue
         
         # find mismatch/indel information
         #MD = re.findall('\d+|[A-Z]|\^[A-Z]+', MD)
@@ -86,85 +113,82 @@ def sort_seqs (read_fname,
         #        mismatch[pt] = tag
         #        pt += len(tag)
         
-
+            
         # check mismatch/indel information
-        bab_pt, read_pt = pos-1, -1
-        mut_list = []
-        edge_mut = False # check read has mutation on either ends
+        bab_pt, read_pt = pos, 0
+        mtype_pt_nts = {}
+        edge_mut = False 
         
         cigar_str=re.split('(\d+)',cigar_str)[1:]
         for i in range(len(cigar_str)/2):
             s = cigar_str[2*i+1]
             num = int(cigar_str[2*i])
-            for j in range(num):
-                if s=='M':
-                    bab_pt += 1
-                    read_pt += 1
+
+            if i in [0, len(cigar_str)/2-1]:
+                if s in 'ID':
+                    edge_mut = True
+
+            if s not in mtype_pt_nts:
+                mtype_pt_nts[s] = {}
+
+            if s == 'M':
+                start = False
+                for j in range(num):
                     if bab_seq[bab_pt] != read_seq[read_pt]:
-                        if read_pt == 0 or read_pt == len(read_seq) - 1:
-                            edge_mut = True
-                        mut = ('M', bab_pt, read_seq[read_pt])
-                        mut_list.append(mut)
-                elif s=='I':
-                    read_pt += 1
-                    mut = ('I', bab_pt, read_seq[read_pt])
-                    mut_list.append(mut)
-                elif s=='D':
-                    bab_pt += 1
-                    mut = ('D', bab_pt, bab_seq[bab_pt])
-                    mut_list.append(mut)
+                        if i in [0, len(cigar_str)/2-1]:
+                            if read_pt == 0 or read_pt == len(read_seq)-1:
+                                edge_mut = True
+                        if not start:
+                            start = True
+                            pt = bab_pt
+                        if pt not in mtype_pt_nts[s]:
+                            mtype_pt_nts[s][pt] = ""
+                        nt = read_seq[read_pt]
+                        mtype_pt_nts[s][pt] +=nt
+                    else:
+                        start = False
+                    bab_pt +=1
+                    read_pt +=1
+                
+            elif s == 'I':
+                nts = read_seq[read_pt:read_pt+num]
+                mtype_pt_nts[s][bab_pt-1] = nts # insert right next to the position
+                read_pt +=num
 
+            elif s == 'D':
+                nts = bab_seq[bab_pt:bab_pt+num]
+                mtype_pt_nts[s][bab_pt] = nts
+                bab_pt +=num
+
+            else:
+                bab_pt +=num
+                read_pt +=num
+
+                
+        # if mutation on the very edge of reads, it can't be indentified
         if edge_mut:
-            mut_list = [] # consider as unIden
+            mtype_pt_nts = {}
 
-        mut_list = sorted(mut_list)
-
-        # make possible seq ID by using mismatch/indel information
+            
+        # make all possible ref IDs by using mismatch/indel information
         candidates = []
-        M_key, I_key, D_key = '', '', ''
-        M_prev, I_prev, D_prev = -2, -2, -2
-        for mut in mut_list:
-            mut_type, pt, nt = mut
-            if mut_type == 'M':
-                if pt == M_prev + 1:
-                    M_key += nt
-                else:
-                    if M_key:
-                        candidates.append(M_key)
-                    M_key = str(pt) + '-M-' + nt
-                M_prev = pt
-            elif mut_type == 'I':
-                if pt == I_prev:
-                    I_key += nt
-                else:
-                    if I_key:
-                        candidates.append(I_key)
-                    I_key = str(pt) + '-I-' + nt
-                I_prev = pt
-            elif mut_type == 'D':
-                if pt == D_prev + 1:
-                    D_key += nt
-                else:
-                    if D_key:
-                        candidates.append(D_key)
-                    D_key = str(pt) + '-D-' + nt
-                D_prev = pt
-        if M_key:
-            candidates.append(M_key)
-        if I_key:
-            candidates.append(I_key)
-        if D_key:
-            candidates.append(D_key)
+        for mtype in mtype_pt_nts:
+            for pt in mtype_pt_nts[mtype]:
+                nts = mtype_pt_nts[mtype][pt]
+                candidates.append('-'.join([str(pt), mtype, nts]))
 
-        # sort by hit information
+        # try to identify unique ref ID
         hits, nonhits = [], []
+        edit_dist = 0
         for key in candidates:
             if key in ref_seq:
                 hits.append(key)
             else:
                 nonhits.append(key)
+                _, _, nts = key.split('-')
+                edit_dist += len(nts)
 
-        if len(nonhits) > mm_cutoff:
+        if edit_dist > mm_cutoff:
             type = 'mutant'
         else:
             if len(hits) < 1:
@@ -174,32 +198,32 @@ def sort_seqs (read_fname,
                 hit = ':'.join(hits)
             else:
                 hit = hits[0]
-                    
-        # sort further by read length and alignment position
-        if type == 'NA':
-            ref_len = len(ref_seq[hit])
-            
-            temp = hit.split('-')
-            m, l = temp[1], len(temp[2])
-            if m == 'M':
-                end_pos = min(bab_pt, ref_len - 1)
-            elif m == 'I':
-                end_pos = min(bab_pt + l, ref_len - 1)
-            elif m == 'D':
-                end_pos = min(bab_pt - l, ref_len - 1)
 
+                
+        # try to locate cleavage sites on the reference 
+        if type == 'NA':
+            # alignment location w.r.t. backbone seq
+            end_pos = min(bab_pt, len(bab_seq)) - 1
+
+            # adjust alignment location w.r.t. each ref seq
+            ref_len = len(ref_seq[hit])
+            _, mtype, nts = hit.split('-')
+            if mtype == 'I':
+                end_pos += len(nts)
+            elif mtype == 'D':
+                end_pos -= len(nts)
+
+            # record cleavage locations on the reference if possible
             if pos < len_cutoff and end_pos > ref_len - len_cutoff - 1:
                 type = 'freeDNA'
             elif pos < len_cutoff and end_pos <= ref_len - len_cutoff - 1: 
-                #cut_loc = 'L:' + str(end_pos)
                 cut_loc = 'L:' + str(end_pos+1)
             elif pos >= len_cutoff and end_pos > ref_len - len_cutoff - 1:
-                #cut_loc = 'R:' + str(pos)
                 cut_loc = 'R:' + str(pos-1)
             else:
                 type = 'frag'
 
-        # otherwise, valid data
+        # if all success, valid data
         if type == 'NA':
             type = 'valid'
 
@@ -208,7 +232,7 @@ def sort_seqs (read_fname,
                 continue
             else:
                 read_seq = 'N'
-                
+
         print >> seq_sort_fname, "%s\t%s\t%s\t%s\t%s" % (read_id, type, hit, cut_loc, read_seq)
              
     seq_sort_fname.close()
