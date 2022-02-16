@@ -30,6 +30,78 @@ from scipy import fft
 from scipy.spatial.distance import squareform
 from sklearn import preprocessing
 import random
+import graph_final
+import HMM
+import copy
+
+def get_AG_sig (freq):
+    freq_MM0 = freq['MM0']
+    length = len(freq_MM0)
+    nts = LinModel.all_path(1, 'ATCG')
+    A_sig, G_sig = np.zeros(length), np.zeros(length)
+    for nt in nts:
+        row = [ freq_MM0[i][nt] for i in range(length)]
+        if nt in ['A', 'T']:
+            A_sig += np.asarray(row)
+        if nt in ['G', 'C']:
+            G_sig += np.asarray(row)
+    for i in range(length):
+        A_sig[i] = float(A_sig[i]) / sum(freq_MM0[i].values())
+        G_sig[i] = float(G_sig[i]) / sum(freq_MM0[i].values())
+    return A_sig, G_sig
+
+def get_ATGC_sig (freq):
+    freq_MM1 = freq['MM1']
+    length = len(freq_MM1)
+    nts = LinModel.all_path(2, 'ATCG')
+    AT_sig, GC_sig = np.zeros(length), np.zeros(length)
+    for nt in nts:
+        row = [ freq_MM1[i][nt] for i in range(length)]
+        if nt in ['AA', 'AT', 'TA', 'TT']:
+            AT_sig += np.asarray(row)
+        if nt in ['GG', 'GC', 'CG', 'CC']:
+            GC_sig += np.asarray(row)
+    for i in range(length):
+        AT_sig[i] = float(AT_sig[i]) / sum(freq_MM1[i].values())
+        GC_sig[i] = float(GC_sig[i]) / sum(freq_MM1[i].values())
+    return AT_sig, GC_sig
+
+def stat_Markov(seq_list, NCPlen, order, sym=False):
+    ntdic = {}
+    for nt in all_path(order+1, 'ATCG'):
+        ntdic[nt] = 0.0
+
+    sample_num = len(seq_list)
+
+    if sym:
+        sample_num = 2*sample_num
+
+    freq = [ copy.deepcopy(ntdic) for i in range(NCPlen - order) ]
+    for seq in seq_list:
+        if sym:
+            rev_seq = rev_comp(seq)
+        for i in range(len(seq) - order):
+            nt = seq[i:i+1+order]
+            freq[i][nt] += 1.0 / sample_num
+            if sym:
+                nt = rev_seq[i:i+1+order]
+                freq[i][nt] += 1.0 / sample_num
+
+    mean, std = [], []
+    for ntdic in freq:
+        mean.append(np.mean(ntdic.values()))
+        std.append(np.std(ntdic.values()))
+
+    stdz_freq = []
+    for i in range(len(freq)):
+        ntdic = freq[i]
+        temp = {}
+        for nt, value in ntdic.items():
+            temp[nt] = (value - mean[i]) / std[i]
+        stdz_freq.append(temp)
+
+    return freq, sample_num, mean, std, stdz_freq
+
 
 def GC_content (seq):
     count = 0
@@ -158,7 +230,7 @@ name_key_slider['Control1'] = Control1
 name_key_slider['Control2'] = Control2
 
 # PolyA library
-for condition in ['old']:
+for condition in []:
     if condition == 'old':
         path = "/home/spark159/../../media/spark159/sw/polyAlibFinal/"
     elif condition == 'new':
@@ -226,8 +298,8 @@ for mtype in []:
 
 # Plusone library
 path = "/home/spark159/../../media/spark159/sw/all_slide_seq_data/"
-#for condition in ['new:corrected']:
-for condition in []:
+for condition in ['new:corrected']:
+#for condition in []:
     for time in [0, 30]:
         fname = "%slib_%s_%s" % ('plusone', condition, time)
         if condition =='old' and time == 0:
@@ -391,7 +463,7 @@ if False:
     plt.close()
 
 # clustering analysis
-if True:
+if False:
     for name in name_key_slider:
         if name.startswith('Control'):
             continue
@@ -1256,7 +1328,7 @@ if False:
                     plt.close()
                 """
 
-sys.exit(1)
+#sys.exit(1)
                 
 # yeast library analysis
 key_slider1 = name_key_slider["plusonelib_new:corrected_0"]
@@ -1267,7 +1339,7 @@ with open("plusonelib_info.pickle", "rb") as f:
 
 
 # check all averaged profile
-if False:
+if True:
     keys = sorted(list(set(key_slider1.keys()) & set(key_slider2.keys())))
     dyadmap_list1 =[]
     dyadmap_list2 = []
@@ -1295,6 +1367,8 @@ if False:
     plt.legend()
     plt.show()
 
+    sys.exit(1)
+
     
 # check Entropy change
 if False:
@@ -1320,28 +1394,40 @@ if False:
         FPKM = np.log2(id_info[int(key)]['FPKM'])
         F.append(FPKM)
 
-    fig = plt.figure()
-    plt.scatter(X, Y, c=Z, s=4)
+    fig = plt.figure(figsize=(2,1.4))
+    plt.scatter(X, Y, c=Z, s=2, cmap='rainbow')
     #plt.plot(X, Y, '.')
-    plt.plot([min(X+Y), max(X+Y)], [min(X+Y), max(X+Y)], '--')
-    plt.xlabel("Before")
-    plt.ylabel("After")
-    plt.title("Entropy change")
-    cbar = plt.colorbar()
-    cbar.set_label("KL-divergence")
-    plt.show()
+    plt.plot([min(X+Y)*(1-0.2), max(X+Y)*(1+0.2)], [min(X+Y)*(1-0.2), max(X+Y)*(1+0.2)], 'k--', linewidth=1)
+    #plt.xscale("log", basex=2)
+    #plt.yscale("log", basey=2)
+    plt.gca().tick_params(axis='both', which='major', labelsize=5)
+    plt.gca().tick_params(axis='both', which='minor', labelsize=5)
+    plt.xlim([4.2, 4.8])
+    plt.ylim([4.2, 4.8])
+    plt.xlabel("Before", fontsize=6)
+    plt.ylabel("After", fontsize=6)
+    plt.title("Entropy change", fontsize=6)
+    cbar = plt.colorbar(ticks=[min(Z), max(Z)], shrink=0.6, aspect=20)
+    cbar.ax.set_yticklabels([round(min(Z), 2), round(max(Z), 2)], fontsize=5)
+    cbar.ax.set_ylabel('KL-divergence', rotation=-90, va="bottom", fontsize=5, labelpad=-5)
+    plt.savefig("Entropy_scatter.svg", format='svg', bbox_inches='tight')
+    #plt.show()
     plt.close()
 
     fig = plt.figure()
-    plt.plot(dS, Z, '.')
+    plt.plot(dS, Z, '.', markersize=4)
     #plt.plot([min(dS+Z), max(dS+Z)], [min(dS+Z), max(dS+Z)], '--')
+    plt.axvline(x=0, linestyle='--', color='k')
+    plt.axhline(y=0, linestyle='--', color='k')
     plt.xlabel("Entropy change")
     plt.ylabel("KL-divergence")
-    plt.show()
+    plt.xscale("log", basex=2)
+    plt.yscale("log", basey=2)
+    #plt.show()
     plt.close()
 
     fig = plt.figure()
-    plt.scatter(Y, F, c=Z, s=4)
+    plt.scatter(Y, F, c=Z, s=4, cmap='jet')
     #plt.plot(X, Y, '.')
     #plt.plot([min(X+Y), max(X+Y)], [min(X+Y), max(X+Y)], '--')
     plt.xlabel("Before")
@@ -1349,12 +1435,12 @@ if False:
     plt.title("Entropy change")
     cbar = plt.colorbar()
     cbar.set_label("KL-divergence")
-    plt.show()
+    #plt.show()
     plt.close()
 
 
     
-#sys.exit(1)
+    sys.exit(1)
     
 # check by strand
 if False:
@@ -1491,15 +1577,18 @@ if False:
 
     color_list = ['r', 'g', 'b', 'orange']
 
-    fig = plt.figure()
+    fig = plt.figure(figsize=(2.2,1.2))
     for i in range(len(group_keys)):
         X = [key_order[key] + 1 for key in group_keys[i]]
         Y = [key_KL[key] for key in group_keys[i]]
-        plt.plot(X, Y, '.', label='Cluster ' + str(i+1), color=color_list[i])
-    plt.xlabel("Sequences")
-    plt.ylabel("KL-divergence")
-    plt.legend()
-    plt.title("Before V.S. After")
+        plt.plot(X, Y, '.', markersize=2, label='Cluster ' + str(i+1), color=color_list[i])
+    plt.xlabel("Sequences", fontsize=6)
+    plt.ylabel("KL-divergence", fontsize=6)
+    plt.title("Before VS After", fontsize=6)
+    plt.gca().tick_params(axis='both', which='major', labelsize=5)
+    plt.gca().tick_params(axis='both', which='minor', labelsize=5)
+    leg = plt.legend(frameon=False, fontsize=6, markerscale=2)
+    #plt.savefig("group_byKL.svg", format='svg', bbox_inches='tight')
     #plt.show()
     plt.close()
 
@@ -1513,8 +1602,16 @@ if False:
             sample_list.append(key)
     sample_list = [sample_list]
 
+    #sample_list = [[key for KL, key in KL_key]]
+
     #graph_edit.plot_map(key_slider1, sample_list, True, Slider.KDE, draw=None, slicing=0, note='_before')
     #graph_edit.plot_map(key_slider2, sample_list, True, Slider.KDE, draw=None, slicing=0, note='_after')
+    #tlen =225
+    #graph_final.plot_map(key_slider1, Slider.KDE, ids=sample_list[0], thickness=[8, 2, 2], cmap='YlGnBu', save=True, note='_before', xticks=[[i+tlen/2 for i in range(-100, 101, 20)], [str(i) for i in range(-100, 101, 20)]], figscale=150, fontsize=5)
+
+    #graph_final.plot_map(key_slider2, Slider.KDE, ids=sample_list[0], thickness=[8, 2, 2], cmap='YlGnBu', save=True, note='_after', xticks=[[i+tlen/2 for i in range(-100, 101, 20)], [str(i) for i in range(-100, 101, 20)]], figscale=150, fontsize=5)
+
+
 
     entropies_list1, entropies_list2 = [], []
     means_list1, means_list2 = [], []
@@ -1559,38 +1656,44 @@ if False:
     #plt.show()
     plt.close()
 
-    fig = plt.figure()
+    fig = plt.figure(figsize=(2, 1.4))
     positions1 = [pos - 0.2 for pos in range(gnum)]
     positions2 = [pos + 0.2 for pos in range(gnum)]
-    box1 = plt.boxplot(entropies_list1, positions=positions1, widths=0.25, notch=True, patch_artist=True)
+    box1 = plt.boxplot(entropies_list1, positions=positions1, widths=0.25, notch=True, patch_artist=True, showfliers=False)
     for patch in box1['boxes']:
         patch.set_facecolor('tab:red')
-    box2 = plt.boxplot(entropies_list2, positions=positions2, widths=0.25, notch=True, patch_artist=True)
+    box2 = plt.boxplot(entropies_list2, positions=positions2, widths=0.25, notch=True, patch_artist=True, showfliers=False)
     for patch in box2['boxes']:
         patch.set_facecolor('tab:blue')
-    plt.xticks(range(gnum), ["Cluster " + str(i+1) for i in range(gnum)])
+    plt.xticks(range(gnum), ["Cluster " + str(i+1) for i in range(gnum)], fontsize=6, rotation=40)
     plt.xlim([-0.5, gnum-0.5])
-    plt.legend([box1["boxes"][0], box2["boxes"][0]], ['Before', 'After'], loc='best')
-    plt.ylabel("Entropy")
-    plt.title('Entropy by cluster')
+    plt.legend([box1["boxes"][0], box2["boxes"][0]], ['Before', 'After'], loc='lower left', fontsize=6)
+    plt.ylabel("Entropy", fontsize=6)
+    plt.title('Entropy by cluster', fontsize=6)
+    plt.gca().tick_params(axis='y', which='major', labelsize=5)
+    plt.gca().tick_params(axis='y', which='minor', labelsize=5)
+    #plt.savefig("Entropy_by_group_boxr.svg", format='svg', bbox_inches='tight')
     #plt.show()
     plt.close()
 
-    fig = plt.figure()
+    fig = plt.figure(figsize=(2, 1.4))
     positions1 = [pos - 0.2 for pos in range(gnum)]
     positions2 = [pos + 0.2 for pos in range(gnum)]
-    box1 = plt.boxplot(means_list1, positions=positions1, widths=0.25, notch=True, patch_artist=True)
+    box1 = plt.boxplot(means_list1, positions=positions1, widths=0.25, notch=True, patch_artist=True, showfliers=False)
     for patch in box1['boxes']:
         patch.set_facecolor('tab:red')
-    box2 = plt.boxplot(means_list2, positions=positions2, widths=0.25, notch=True, patch_artist=True)
+    box2 = plt.boxplot(means_list2, positions=positions2, widths=0.25, notch=True, patch_artist=True, showfliers=False)
     for patch in box2['boxes']:
         patch.set_facecolor('tab:blue')
-    plt.xticks(range(gnum), ["Cluster " + str(i+1) for i in range(gnum)])
+    plt.xticks(range(gnum), ["Cluster " + str(i+1) for i in range(gnum)], fontsize=6, rotation=40)
     plt.xlim([-0.5, gnum-0.5])
-    plt.legend([box1["boxes"][0], box2["boxes"][0]], ['Before', 'After'], loc='best')
-    plt.ylabel("mean-positions")
-    plt.title('Mean-position by cluster')
-    plt.show()
+    plt.legend([box1["boxes"][0], box2["boxes"][0]], ['Before', 'After'], loc='lower left', fontsize=6)
+    plt.ylabel("Mean position", fontsize=6)
+    plt.title('Mean position by cluster', fontsize=6)
+    plt.gca().tick_params(axis='y', which='major', labelsize=5)
+    plt.gca().tick_params(axis='y', which='minor', labelsize=5)
+    #plt.savefig("MPosition_by_group_boxr.svg", format='svg', bbox_inches='tight')
+    #plt.show()
     plt.close()
 
     fig = plt.figure()
@@ -1607,11 +1710,254 @@ if False:
     plt.legend([box1["boxes"][0], box2["boxes"][0]], ['Before', 'After'], loc='best')
     plt.ylabel("FPKMs")
     plt.title('Gene expression by cluster')
-    plt.show()
+    #plt.show()
     plt.close()
 
 
     #sys.exit(1)
+
+    # Mononucleotide periodicity analysis
+    M1 = LinModel.LinSliderModel(key_slider1)
+    M1.report (MM_orders=[0], Kmer_k_b=None, PolyA_b=None, GC_b=None, Harmonic=None)
+    M2 = LinModel.LinSliderModel(key_slider2)
+    M2.report (MM_orders=[0], Kmer_k_b=None, PolyA_b=None, GC_b=None, Harmonic=None)
+
+    AT_sig1, GC_sig1 = get_AG_sig(M1.freq)
+    AT_sig2, GC_sig2 = get_AG_sig(M2.freq)
+
+
+    #fig = plt.figure(figsize=(2.6, 2))
+    fig = plt.figure(figsize=(3, 2.2))
+    plt.plot(AT_sig1, color='hotpink', lw=1.2, label='A/T (HS)')
+    plt.plot(GC_sig1, color='lightskyblue', lw=1.2, label='G/C (HS)')
+    plt.plot(AT_sig2, '--', color='red', lw=1.2, label='A/T (Chd1)')
+    plt.plot(GC_sig2, '--', color='blue', lw=1.2, label='G/C (Chd1)')
+    line_list = [147/2 - i*20 for i in range(4)] + [147/2 + i*20 for i in range(1, 4)]
+    for line in line_list:
+        plt.axvline(x=line, color='k', linestyle='--', alpha=0.25, lw=1)
+    plt.xticks([147/2 + 10*i for i in range(-7, 8, 2)], [str(10*i) for i in range(-7, 8, 2)], fontsize=5)
+    plt.xlabel("Super Helical Location", fontsize=6)
+    plt.ylabel("Relative frequency", fontsize=6)
+    plt.gca().tick_params(axis='both', which='major', labelsize=5)
+    plt.gca().tick_params(axis='both', which='minor', labelsize=5)
+    leg = plt.legend(frameon=True, fontsize=5)
+
+    #plt.ylim([0.235, 0.275])
+    #plt.ylim([0.22, 0.28])
+    #plt.savefig('ATGCperiod_' + "slide" + '.png')
+    plt.title("Mononucleotide periodicity", fontsize=8)
+    plt.savefig('AGperiod_' + "slide" + '.svg', format='svg', bbox_inches='tight')
+    #plt.show()
+    plt.close()
+
+    sys.exit(1)
+
+    # homopolymer analysis
+    nts_list = ['AT', 'GC']
+    M1 = LinModel.LinSliderModel(key_slider1)
+    M1.report (MM_orders=[], Kmer_k_b=[], PolyA_b=None, GC_b=None, Harmonic=None, Polylen=nts_list)
+    M2 = LinModel.LinSliderModel(key_slider2)
+    M2.report (MM_orders=[], Kmer_k_b=[], PolyA_b=None, GC_b=None, Harmonic=None, Polylen=nts_list)
+
+    for nts in nts_list:
+        mname = 'Polylen' + '/'.join(nts)
+        profile1 = M1.freq[mname]
+        profile2 = M2.freq[mname]
+
+        fig = plt.figure(figsize=(3, 2.2))
+        plt.plot(profile1, '--', color='tab:orange', lw=1.2, label='HS')
+        plt.plot(profile2, 'k-', lw=1.2, label='Chd1')
+        line_list = [147/2 - i*20 for i in range(4)] + [147/2 + i*20 for i in range(1, 4)]
+        for line in line_list:
+            plt.axvline(x=line, color='k', linestyle='--', alpha=0.25, lw=1)
+        plt.xticks([147/2 + 10*i for i in range(-7, 8, 2)], [str(10*i) for i in range(-7, 8, 2)], fontsize=5)
+        plt.xlabel("Super Helical Location", fontsize=6)
+        plt.ylabel("Fold change", fontsize=6)
+        plt.gca().tick_params(axis='both', which='major', labelsize=5)
+        plt.gca().tick_params(axis='both', which='minor', labelsize=5)
+        leg = plt.legend(frameon=True, fontsize=5)
+
+        #plt.ylim([0.235, 0.275])
+        #plt.ylim([0.22, 0.28])
+        #plt.savefig('ATGCperiod_' + "slide" + '.png')
+        title = "Poly(d%s:d%s) tract length" % tuple(list(nts))
+        plt.title(title, fontsize=8)
+        plt.savefig('tractlength_' + nts + '.svg', format='svg', bbox_inches='tight')
+        #plt.show()
+        plt.close()
+    
+
+    
+    sys.exit(1)
+
+    # 4-mer analysis
+    klen = 4
+    MMname = 'MM' + str(klen-1)
+    M1 = LinModel.LinSliderModel(key_slider1)
+    M1.report (MM_orders=[klen-1], Kmer_k_b=[], PolyA_b=None, GC_b=None, Harmonic=None)
+    M2 = LinModel.LinSliderModel(key_slider2)
+    M2.report (MM_orders=[klen-1], Kmer_k_b=[], PolyA_b=None, GC_b=None, Harmonic=None)
+
+    all_kmers = [kmer for GC, kmer in sorted([(GC_content(kmer), kmer) for kmer in LinModel.all_path(klen, 'ATCG')])]
+    tlen = len(M1.freq[MMname])
+
+    all_foldchange = []
+    kmer_change_profile = {}
+    for kmer in all_kmers:
+        for i in range(tlen):
+            freq1 = M1.freq[MMname][i][kmer] / float(sum(M1.freq[MMname][i].values()))
+            freq2 = M2.freq[MMname][i][kmer] / float(sum(M2.freq[MMname][i].values()))
+            #foldchange = (freq2 - freq1)/float(freq1)
+            foldchange = (freq2 - freq1)
+            #foldchange = float(freq2)/freq1
+            all_foldchange.append(foldchange)
+            if kmer not in kmer_change_profile:
+                kmer_change_profile[kmer] = [0.0]*tlen
+            kmer_change_profile[kmer][i] = foldchange
+
+    group_num = 2
+    group_size = len(all_kmers) / group_num
+    limit = max(abs(min(all_foldchange)), abs(max(all_foldchange)))
+    #limit = max(abs(min(all_foldchange)-1), abs(max(all_foldchange)-1))
+    vmin, vmax = -limit, limit
+    #vmin, vmax = min(all_foldchange), max(all_foldchange)
+    #vmin, vmax = 1-limit, 1+limit
+    #vmin, vmax = None, None
+    cmap = 'seismic'
+    for i in range(group_num):
+        st, ed = group_size*i, group_size*(i+1)
+
+        sub_kmers = all_kmers[st:ed]
+        
+        img = []
+        for kmer in sub_kmers:
+            change_profile = kmer_change_profile[kmer]
+            img.append(change_profile)
+
+        fig = plt.figure(figsize=(3.2, 11))
+        #fig = plt.figure(figsize=(7.5, 11))
+        im = plt.imshow(img, cmap=cmap, aspect='auto', vmin=vmin, vmax=vmax)
+        if vmin == None and vmax == None:
+            vmin, vmax = im.get_clim()
+        plt.yticks(range(len(sub_kmers)), sub_kmers, horizontalalignment='right', fontname='monospace', fontsize=5)
+        plt.xticks([tlen/2 + 10*k for k in range(-7, 8, 2)], [str(10*k) for k in range(-7, 8, 2)], fontsize=6)
+        plt.savefig("4-mers_profile_change_g%s.svg" % (i+1), format='svg', bbox_inches='tight') 
+        #plt.colorbar()
+        #plt.show()
+        plt.close()
+
+    fig = plt.figure(figsize=(0.74,1.3))
+    cbar = plt.colorbar(im, cax=plt.gca(), ticks=[vmin, vmax], format='%.0e')
+    #cbar.ax.set_yticklabels([vmin, vmax], fontsize=5)
+    for t in cbar.ax.get_yticklabels():
+        t.set_fontsize(5)
+    cbar.ax.set_ylabel('$\Delta$freq (Chd1-HS)', rotation=-90, va="bottom", fontsize=6, labelpad=-8)
+    plt.tight_layout()
+    plt.savefig('change_kmer_cbar.svg', format='svg', bbox_inches='tight')
+    plt.close()
+
+    #sys.exit(1)
+
+    
+    # Dinucleotide periodicity analysis
+    M1 = LinModel.LinSliderModel(key_slider1)
+    M1.report (MM_orders=[1], Kmer_k_b=None, PolyA_b=None, GC_b=None, Harmonic=None)
+    M2 = LinModel.LinSliderModel(key_slider2)
+    M2.report (MM_orders=[1], Kmer_k_b=None, PolyA_b=None, GC_b=None, Harmonic=None)
+
+    AT_sig1, GC_sig1 = get_ATGC_sig(M1.freq)
+    AT_sig2, GC_sig2 = get_ATGC_sig(M2.freq)
+
+
+    #fig = plt.figure(figsize=(2.6, 2))
+    fig = plt.figure(figsize=(3, 2.2))
+    plt.plot(AT_sig1, color='hotpink', lw=1.2, label='AT-rich (HS)')
+    plt.plot(GC_sig1, color='lightskyblue', lw=1.2, label='GC-rich (HS)')
+    plt.plot(AT_sig2, '--', color='red', lw=1.2, label='AT-rich (Chd1)')
+    plt.plot(GC_sig2, '--', color='blue', lw=1.2, label='GC-rich (Chd1)')
+    line_list = [147/2 - i*20 for i in range(4)] + [147/2 + i*20 for i in range(1, 4)]
+    for line in line_list:
+        plt.axvline(x=line, color='k', linestyle='--', alpha=0.25, lw=1)
+    plt.xticks([147/2 + 10*i for i in range(-7, 8, 2)], [str(10*i) for i in range(-7, 8, 2)], fontsize=5)
+    plt.xlabel("Super Helical Location", fontsize=6)
+    plt.ylabel("Relative frequency", fontsize=6)
+    plt.gca().tick_params(axis='both', which='major', labelsize=5)
+    plt.gca().tick_params(axis='both', which='minor', labelsize=5)
+    leg = plt.legend(frameon=True, fontsize=5)
+
+    plt.ylim([0.235, 0.275])
+    #plt.ylim([0.22, 0.28])
+    #plt.savefig('ATGCperiod_' + "slide" + '.png')
+    plt.title("Dinucleotide periodicity", fontsize=8)
+    plt.savefig('ATGCperiod_' + "slide" + '.svg', format='svg', bbox_inches='tight')
+    #plt.show()
+    plt.close()
+
+    sys.exit(1)
+
+
+    #plt.show()
+    plt.close()
+    
+    
+    MMfreq_list1, MMfreq_list2 = [], []
+    for i in range(gnum):
+        M1 = LinModel.LinSliderModel(key_slider1, keys=group_keys[i])
+        M1.report (MM_orders=[1], Kmer_k_b=None, PolyA_b=None, GC_b=None, Harmonic=None)
+        M2 = LinModel.LinSliderModel(key_slider2, keys=group_keys[i])
+        M2.report (MM_orders=[1], Kmer_k_b=None, PolyA_b=None, GC_b=None, Harmonic=None)
+        MMfreq_list1.append(M1.freq)
+        MMfreq_list2.append(M2.freq)
+
+    AT_sig_list1, GC_sig_list1 = [], []
+    AT_sig_list2, GC_sig_list2 = [], []
+    for i in range(gnum):
+        freq1 = MMfreq_list1[i]
+        AT_sig1, GC_sig1 = get_ATGC_sig(freq1)
+        AT_sig_list1.append(AT_sig1)
+        GC_sig_list1.append(GC_sig1)
+        freq2 = MMfreq_list2[i]
+        AT_sig2, GC_sig2 = get_ATGC_sig(freq2)
+        AT_sig_list2.append(AT_sig2)
+        GC_sig_list2.append(GC_sig2)
+
+
+    color_list = np.linspace(0.3, 0.8, num=gnum)
+    #color_list = ["tab:red", "tab:green", "tab:blue", "tab:olive"]
+    cmap1, cmap2 = cm.get_cmap("OrRd"), cm.get_cmap("GnBu")
+    cmap = cm.get_cmap("rainbow")
+
+    fig = plt.figure(figsize=(2.6, 2))
+    #plt.subplot(1,2,1)
+    ax1 = plt.gca()
+    ax2 = ax1.twinx()
+    for i in range(gnum):
+        AT_sig1, GC_sig1 = AT_sig_list1[i], GC_sig_list1[i]
+        AT_sig2, GC_sig2 = AT_sig_list2[i], GC_sig_list2[i]
+        ax1.plot(GC_sig1, color=cmap1(color_list[i]), lw=1)
+        ax1.plot(GC_sig2, '--', color=cmap2(color_list[i]), lw=1)
+        #ax2.plot(GC_sig, color=cmap2(color_list[i]), lw=1)
+        #ax1.plot(AT_sig, color=color_list[i], lw=1)
+        #ax2.plot(GC_sig, color=color_list[i], lw=1)
+    ax1.set_ylabel('AA/AT/TA/TT freqeuncy', color='r', fontsize=8)
+    ax2.set_ylabel('CC/CG/GC/GG freqeuncy', color='b', fontsize=8)
+    ax1.set_xlabel("Super Helical Location", fontsize=8)
+    ax1.tick_params('y', colors='r', labelsize=8)
+    ax2.tick_params('y', colors='b', labelsize=8)
+    line_list = [147/2 - i*20 for i in range(4)] + [147/2 + i*20 for i in range(1, 4)]
+    for line in line_list:
+        plt.axvline(x=line, color='k', linestyle='--', alpha=0.25)
+    plt.xticks([147/2 + 10*i for i in range(-7, 8, 2)], [str(10*i) for i in range(-7, 8, 2)], fontsize=5)
+    #plt.ylabel("Relative frequency")
+    #plt.legend()
+    #plt.ylim([0.22, 0.28])
+    #plt.savefig('ATGCperiod_' + "slide" + '.png')
+    #plt.savefig('ATGCperiod_' + "slide" + '.svg', format='svg', bbox_inches='tight')
+    plt.title("Dinucleotide periodicity", fontsize=8)
+    #plt.show()
+    plt.close()
+
+    sys.exit(1)
 
 
     group_feature = []
@@ -1665,6 +2011,8 @@ if False:
         plt.suptitle("Sequence features")
         #plt.show()
         plt.close()
+
+#sys.exit(1)
 
 # dinucleotide pair correlation analysis
 if False:
@@ -1773,22 +2121,30 @@ if False:
             phase_img[i][j] = phase1
             phase_img[j][i] = phase2
 
-    fig = plt.figure()
-    plt.imshow(amplt_img)
-    plt.xticks(range(len(all_din)), all_din)
-    plt.yticks(range(len(all_din)), all_din)
-    plt.title("Amplitude")
-    plt.colorbar()
-    plt.show()
+    fig = plt.figure(figsize=(3.4, 2.4))
+    plt.imshow(amplt_img, cmap='afmhot_r', aspect='auto')
+    plt.xticks(range(len(all_din)), all_din, rotation=45, fontsize=6)
+    plt.yticks(range(len(all_din)), all_din, fontsize=6)
+    plt.title("Amplitude", fontsize=8)
+    cbar = plt.colorbar(shrink=0.6, aspect=20, format='%.0e')
+    for t in cbar.ax.get_yticklabels():
+        t.set_fontsize(5)
+    #cbar.ax.set_yticklabels([round(min(Z), 2), round(max(Z), 2)], fontsize=5)
+    #cbar.ax.set_ylabel('KL-divergence', rotation=-90, va="bottom", fontsize=5, labelpad=-5)
+    plt.savefig("amplt.svg", format="svg", bbox_inches='tight')
+    #plt.show()
     plt.close()
 
-    fig = plt.figure()
-    plt.imshow(phase_img, cmap='Spectral', vmin=0, vmax=1)
-    plt.xticks(range(len(all_din)), all_din)
-    plt.yticks(range(len(all_din)), all_din)
-    plt.title("Phase")
-    plt.colorbar()
-    plt.show()
+    fig = plt.figure(figsize=(3.4, 2.4))
+    plt.imshow(phase_img, cmap='Spectral', vmin=0, vmax=1, aspect='auto')
+    plt.xticks(range(len(all_din)), all_din, rotation=45, fontsize=6)
+    plt.yticks(range(len(all_din)), all_din, fontsize=6)
+    plt.title("Phase", fontsize=8)
+    cbar = plt.colorbar(shrink=0.6, aspect=20)
+    for t in cbar.ax.get_yticklabels():
+        t.set_fontsize(5)
+    plt.savefig("phase.svg", format="svg", bbox_inches='tight')
+    #plt.show()
     plt.close()
 
 
@@ -1815,6 +2171,251 @@ if False:
     #    plt.show()
     #    plt.close()
 
+
+    sys.exit(1)
+
+# make predictive model
+if True:
+    def read_ref (ref_fname):
+        id_seq = {}
+        for line in open(ref_fname):
+            line = line.strip()
+            if line.startswith(">"):
+                id = line[1:]
+                continue
+            seq = line
+            assert id not in id_seq
+            id_seq[id] = seq
+        return id_seq
+    key_seq = read_ref ("plusonelib.ref")
+
+    if False:
+        # Markov Model
+        M1 = LinModel.LinSliderModel(key_slider1)
+        Markov1 = HMM.MarkovModel(1)
+        even_sample = M1._even_sampling()
+        bias_sample = M1._bias_sampling()
+        Markov1.train({i:even_sample[i] for i in range(len(even_sample))}, bias_sample)
+
+        # check Widom 601
+        X, Y = [], []
+        for key in key_slider1:
+            psig = analysis.norm(key_slider1[key].dyadmap)
+            seq = key_seq[key]
+            assert len(seq) == 225
+            pred_psig = Markov1.single_prob_profile (seq, background=False)
+
+            fig = plt.figure()
+            plt.plot(psig, 'k-')
+            plt.plot(pred_psig, 'r-')
+            plt.title(key)
+            plt.show()
+            plt.close()
+
+            X += psig[NCP_len/2:len(psig)-NCP_len/2]
+            Y += pred_psig[NCP_len/2:len(pred_psig)-NCP_len/2]
+
+        print analysis.get_corr(X, Y)
+
+        fig = plt.figure()
+        plt.plot(X, Y, '.')
+        plt.xlabel("Experiment")
+        plt.ylabel("Prediction")
+        plt.show()
+        plt.close()
+
+
+        sys.exit(1)
+
+
+    # Exp vs Pred
+    order = 0
+    M1 = LinModel.LinSliderModel(key_slider1)
+    M2 = LinModel.LinSliderModel(key_slider2)
+
+    #order=1
+    M1.train(MM_orders=[order], Kmer_k_b=[], PolyA_b=False, GC_b=False, Harmonic=True, graph=False)
+    M2.train(MM_orders=[order], Kmer_k_b=[], PolyA_b=False, GC_b=False, Harmonic=True, graph=False)
+
+    X, Y = [], []
+    pred_key_slider1 = {}
+    for key in key_slider1:
+        psig = analysis.norm(key_slider1[key].dyadmap)
+        seq = key_seq[key]
+        assert len(seq) == 225
+        pred_psig = M1._predict(seq)
+
+        fig = plt.figure()
+        plt.plot(psig, 'k-')
+        plt.plot([0.0]*(NCP_len/2) + pred_psig + [0.0]*(NCP_len/2), 'r-')
+        plt.show()
+        plt.close()
+
+        newslider = copy.deepcopy(key_slider1[key])
+        newslider.dyadmap = [0.0]*(NCP_len/2) + pred_psig + [0.0]*(NCP_len/2)
+        pred_key_slider1[key] = newslider
+
+        X += psig[NCP_len/2:len(psig)-NCP_len/2]
+        #Y += pred_psig[NCP_len/2:len(psig)-NCP_len/2]
+        Y += pred_psig
+
+    #tlen = 225
+    #random.seed(0)
+    #sample_list = random.sample(key_slider1.keys(), 30)
+
+    #graph_final.plot_map(key_slider1, Slider.KDE, ids=sample_list, thickness=[8, 2, 2], cmap='YlGnBu', save=True, note='_before', xticks=[[i+tlen/2 for i in range(-100, 101, 20)], [str(i) for i in range(-100, 101, 20)]], figscale=150, fontsize=5)
+
+    #graph_final.plot_map(pred_key_slider1, Slider.KDE, ids=sample_list, thickness=[8, 2, 2], cmap='YlGnBu', save=True, note='_after', xticks=[[i+tlen/2 for i in range(-100, 101, 20)], [str(i) for i in range(-100, 101, 20)]], figscale=150, fontsize=5)
+
+
+    
+
+    fig = plt.figure(figsize=(2, 1.8))
+    plt.plot(X, Y, 'k.', markersize=2, alpha=0.1)
+    sns.kdeplot(X, Y, cmap='Reds', shade=False, shade_lowest=False, zorder=100, linewidth=0.1, alpha=0.5)
+    plt.xlabel("Experiment", fontsize=6)
+    plt.ylabel("Prediction", fontsize=6)
+    plt.title("Chd1 data", fontsize=8)
+    plt.gca().tick_params(axis='both', which='major', labelsize=5)
+    plt.gca().tick_params(axis='both', which='minor', labelsize=5)
+    plt.xlim([0, 0.03])
+    plt.ylim([0, 0.03])
+    #plt.savefig("ExVsPre.png", dpi=500, bbox_inches='tight')
+    #plt.show()
+    plt.close()
+
+    sys.exit(1)
+
+    # linear energy model
+    k_fold = 10
+    mname_list1, mname_list2 = [], []
+    corrs_list1, corrs_list2 = [], []
+    M1 = LinModel.LinSliderModel(key_slider1)
+    M2 = LinModel.LinSliderModel(key_slider2)
+
+    # 0-th order Markov
+    order=0
+    M1.train(MM_orders=[order], Kmer_k_b=[], PolyA_b=False, GC_b=False, Harmonic=False, graph=False)
+    M2.train(MM_orders=[order], Kmer_k_b=[], PolyA_b=False, GC_b=False, Harmonic=False, graph=False)
+    mname_list1.append('Mono-nt steps')
+    mname_list2.append('Mono-nt steps')
+    corrs_list1.append(M1.corr)
+    corrs_list2.append(M2.corr)
+
+    # 1-th order Markov
+    order=1
+    M1.train(MM_orders=[order], Kmer_k_b=[], PolyA_b=False, GC_b=False, Harmonic=False, graph=False)
+    M2.train(MM_orders=[order], Kmer_k_b=[], PolyA_b=False, GC_b=False, Harmonic=False, graph=False)
+    mname_list1.append('Di-nt steps')
+    mname_list2.append('Di-nt steps')
+    corrs_list1.append(M1.corr)
+    corrs_list2.append(M2.corr)
+
+    # 1-th order Markov + 5-mers
+    order=1
+    M1.train(MM_orders=[order], Kmer_k_b=[5, 1], PolyA_b=False, GC_b=False, Harmonic=False, graph=False)
+    M2.train(MM_orders=[order], Kmer_k_b=[5, 1], PolyA_b=False, GC_b=False, Harmonic=False, graph=False)
+    mname_list1.append('Di-nt + 5-mers')
+    mname_list2.append('Di-nt + 5-mers')
+    corrs_list1.append(M1.corr)
+    corrs_list2.append(M2.corr)
+
+    # 1-th order Markov + 5-mers + Harmonics
+    order=1
+    M1.train(MM_orders=[order], Kmer_k_b=[5, 1], PolyA_b=False, GC_b=False, Harmonic=True, graph=False)
+    M2.train(MM_orders=[order], Kmer_k_b=[5, 1], PolyA_b=False, GC_b=False, Harmonic=True, graph=False)
+    mname_list1.append('Di-nt + 5-mers + Harmo')
+    mname_list2.append('Di-nt + 5-mers + Harmo')
+    corrs_list1.append(M1.corr)
+    corrs_list2.append(M2.corr)
+
+    # check correlation
+    color_list = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray']
+
+    fig = plt.figure(figsize=(2.8, 2))
+    for i in range(len(corrs_list1)):
+        bp1 = plt.boxplot(corrs_list1[i], positions=[i-0.18],
+                          patch_artist=True, showfliers=False, widths=[0.2])
+        for patch in bp1['boxes']:
+            patch.set_facecolor('tab:orange')
+        for element in ['whiskers', 'fliers', 'means', 'medians', 'caps']:
+            plt.setp(bp1[element], color='black', lw=0.5)
+
+        bp2 = plt.boxplot(corrs_list2[i], positions=[i+0.18],
+                          patch_artist=True, showfliers=False, widths=[0.2])
+        for patch in bp2['boxes']:
+            patch.set_facecolor('tab:green')
+        for element in ['whiskers', 'fliers', 'means', 'medians', 'caps']:
+            plt.setp(bp2[element], color='black', lw=0.5)
+
+    #plt.boxplot(corrs_list, positions=range(len(mname_list)))
+    plt.xticks(range(len(corrs_list1)), mname_list1, rotation=45, fontsize=8,  ha="right", rotation_mode="anchor")
+    plt.gca().tick_params('y', labelsize=6)
+    plt.ylabel("Pearson correlation", fontsize=8)
+    plt.title("10-fold cross validation", fontsize=10)
+    plt.xlim([-0.5, len(mname_list1)-0.5])
+    plt.legend([bp1["boxes"][0], bp2["boxes"][0]], ['HS', 'Chd1'], frameon=True, loc='lower right', fontsize=8)
+    plt.savefig('Pearson_model.svg', format='svg', bbox_inches='tight')
+    #plt.show()
+    plt.close()
+
+    
+
+    
+
+
+    sys.exit(1)
+
+    # Markov Model
+    #Markov1 = HMM.MarkovModel(1)
+    #even_sample = M1._even_sampling()
+    #bias_sample = M1._bias_sampling()
+    #Markov1.train({i:even_sample[i] for i in range(len(even_sample))}, bias_sample)
+
+    # check Widom 601
+    seq = "ATCCGACTGGCACCGGCAAGGTCGCTGTTCGCCACATGCGCAGGATGTATATATCTGACACGTGCCTGGAGACTAGGGAGTAATCCCCTTGGCGGTTAAAACGCGGGGGACAGCGCGTACGTGCGTTTAAGCGGTGCTAGAGCTGTCTACGACCAATTGAGCGGCCTCGGCACCGGGATTCTCCAGGGCGTCCTCGTATAGGGTCCATCACATAAGGGATGAACT"
+    assert len(seq) == 225
+    p_sig1 = analysis.norm(Control2['601'].dyadmap)
+    pred_psig = M1._predict(seq)
+
+    fig = plt.figure()
+    plt.plot(p_sig1, 'k-')
+    plt.plot(pred_psig, 'r-')
+    #plt.show()
+    plt.close()
+
+    #exit(1)
+    
+
+    X, Y = [], []
+    for key in ['97']:
+        psig = analysis.norm(key_slider1[key].dyadmap)
+        seq = key_seq[key]
+        assert len(seq) == 225
+        pred_psig = M1._predict(seq)
+        #pred_psig = Markov1.single_prob_profile (seq)
+
+        X += psig[NCP_len/2:len(psig)-NCP_len/2+1]
+        Y += pred_psig[NCP_len/2:len(psig)-NCP_len/2+1]
+
+        fig = plt.figure()
+        plt.plot(psig, 'k-')
+        plt.plot(pred_psig, 'r-')
+        #plt.plot(X, Y,'.')
+        #plt.xlabel("Experiment")
+        #plt.ylabel("Prediction")
+        plt.title(key)
+        plt.show()
+        plt.close()
+
+    fig = plt.figure()
+    plt.plot(X, Y, '.')
+    plt.xlabel("Experiment")
+    plt.ylabel("Prediction")
+    plt.show()
+    plt.close()
+
+    print analysis.get_corr(X, Y)
 
     sys.exit(1)
 

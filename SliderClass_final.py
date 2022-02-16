@@ -152,6 +152,11 @@ class Slider:
         dyadmap = self.dyadmap[left_bound:len(self.dyadmap)-right_bound]
         return np.asarray(analysis.normalize_list(dyadmap))
 
+    # get normalized cut signal
+    def get_cutsig(self):
+        total = float(sum(self.right_cutmap) + sum(self.left_cutmap))
+        return np.asarray(self.right_cutmap)/total, np.asarray(self.left_cutmap)/total
+
     # find GC content of the reference sequence
     def GC_content(self):
         return analysis.GC_content(self.seq)

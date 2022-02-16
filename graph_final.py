@@ -13,20 +13,69 @@ import analysis_final as analysis
 from sklearn.neighbors import KernelDensity
 from mpl_toolkits.axes_grid1 import AxesGrid
 import matplotlib.ticker as tck
+from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.colors import ListedColormap
+
+pastel_jet = LinearSegmentedColormap.from_list('white_viridis',
+                                             [('darkblue'),
+                                              ('blue'),
+                                              ('cyan'),
+                                              ('yellow'),
+                                              ('orange'),
+                                              ('red'),
+                                              ('darkred')],
+                                               N=256)
+
+
+
+#pastel_jet = LinearSegmentedColormap.from_list('white_viridis',
+#                                             [(0, '#ffffff'),
+#                                              (0.6, 'tab:blue'),
+#                                              (0.7, 'tab:green'),
+#                                              (0.8, 'yellow'),
+#                                              (0.9, 'tab:orange'),
+#                                              (1, 'darkred')
+#                                             ], N=256)
+
+#pastel_jet = LinearSegmentedColormap.from_list('white_viridis',
+#                                             [(0, '#ffffff'),
+#                                              (0.6, 'tab:cyan'),
+#                                              (0.7, 'tab:blue'),
+#                                              (0.8, 'yellow'),
+#                                              (0.9, 'tab:orange'),
+#                                              (1, 'darkred')
+#                                             ], N=256)
+
+
+#pastel_jet = LinearSegmentedColormap.from_list('pastel_jet',
+#                                              [(0, 'tab:blue'),
+#                                               (0.2, 'tab:cyan'),
+#                                               (0.4, 'tab:green'),
+#                                               (0.6, 'yellow'),
+#                                               (0.8, 'tab:orange'),
+#                                               (1, 'tab:red'),],
+#                                               N=256)
+
+
+#pastel_jet_r = ListedColormap(pastel_jet.colors[::-1])
+#pastel_jet_r = pastel_jet[::-1]
 
 # plot (stacked) heatmap for 1-d signal observables of sliders
-def plot_map(id_slider,
-             obs_func,
-             ids=[],
-             xticks=None,
-             norm=True,
-             thickness=None,
-             mark=None,
-             cmap='jet',
-             mcolor='red',
-             slicing=0,
-             note="",
-             save=False,
+def plot_map(id_slider,       # dictionary of id:Slider
+             obs_func,        # set observables to plot
+             ids=[],          # id selection
+             xticks=None,     # [xticks, xticklabels]
+             norm=True,       # normalization option
+             thickness=None,  # [strip, space, marker]
+             mark=None,       # mark id or poly-N in the heatmap
+             cmap='jet',      # set colormap 
+             mcolor='red',    # set marker color
+             slicing=0,       # slice out the both ends of data
+             note="",         # add note to the name
+             save=False,      # save heatmap
+             figscale=100,    # set the figure size len(data)/figscale (inches)
+             figsize=None,    # set figure size [height, width] (inches)
+             fontsize=6,      # set xick label font size
              *args):
 
     if len(ids) <= 0:
@@ -128,34 +177,41 @@ def plot_map(id_slider,
                     mark_img.append([np.nan]*len(mark_sig))
 
     fig = plt.figure()
-    height, width = np.shape(img_stack[0])
-    fig.set_size_inches(float(width)/100, float(height)/100, forward = False)
-    ax = plt.subplot(111, aspect = 'equal')
-    plt.subplots_adjust(left=0, bottom=0.3/(float(height)/100), right=1, top=1, wspace=0, hspace=0)
+    if figsize == None:
+        ncols, nrows = np.shape(img_stack[0])
+        height, width = float(ncols)/figscale, float(nrows)/figscale
+        aspect='equal'
+    else:
+        height, width = figsize
+        aspect='auto'
+    fig.set_size_inches(width, height, forward = False)
+    ax = plt.subplot(111)
+    plt.subplots_adjust(left=0, bottom=0.3/height, right=1, top=1, wspace=0, hspace=0)
     ax.spines['top'].set_visible(False)
     ax.spines['left'].set_visible(False)
     ax.spines['right'].set_visible(False)
-    plt.tick_params(top='off', left='off', right='off', labelleft='off', labelbottom='on', labelsize=6)
+    plt.tick_params(top='off', left='off', right='off', labelleft='off', labelbottom='on')
 
     for img, cmap in zip(img_stack, cmaps):
         colormap = cm.get_cmap(cmap)
         colormap.set_bad(alpha=0)
-        ax.imshow(img, cmap=colormap, interpolation='none')
+        ax.imshow(img, cmap=colormap, interpolation='none', aspect=aspect)
 
     if mark:
         colormap = colors.ListedColormap([mcolor])
         colormap.set_bad(alpha=0)
-        ax.imshow(mark_img, cmap=colormap, interpolation='none')
+        ax.imshow(mark_img, cmap=colormap, interpolation='none', aspect=aspect)
 
     if xticks:
         ax.set_xticks(xticks[0])
-        ax.set_xticklabels(xticks[1])
+        ax.set_xticklabels(xticks[1], fontsize=fontsize)
         ax.xaxis.set_minor_locator(tck.AutoMinorLocator(2))
 
     #plt.tight_layout()
 
     if save:
-        plt.savefig('Heatmap' + note + '.png', dpi=1000)
+        #plt.savefig('Heatmap' + note + '.png', dpi=1000)
+        plt.savefig('Heatmap' + note + '.svg', format='svg')
     else:
         plt.show()
 
@@ -169,7 +225,7 @@ def plot_map(id_slider,
 def plot_sig(id_slider,
              obs_func,
              ids = [],
-             row=10,
+             row=8,
              col=4,
              norm=False,
              mark=None,
@@ -221,7 +277,7 @@ def plot_sig(id_slider,
 
     #page_nums = 1
     for i in range(page_nums):
-        fig = plt.figure(figsize=(15,20))
+        fig = plt.figure(figsize=(8.5,11))
         j = 0
         while j < min(row*col, len(ids)-row*col*i):
             id = ids[row*col*i + j]
@@ -238,13 +294,16 @@ def plot_sig(id_slider,
                 sig = obs_func(slider, *args)
                 if norm:
                     sig = analysis.normalize_list(sig)
-                plt.plot(sig, color=color, alpha=alpha, label=label)
+                plt.plot(sig, color=color, alpha=alpha, label=label, lw=1)
 
             if mark == 'wid':
                 loc, mtype, nts = id.split('-')
                 size, loc = len(nts), int(loc)
                 st, ed = loc, loc+size
-                plt.axvspan(st, ed-1, alpha=0.5, color='red')
+                if size > 1:
+                    plt.axvspan(st, ed-1, alpha=0.6, facecolor='red', lw=1)
+                else:
+                    plt.axvline(x=st, color='red', alpha=0.6, lw=1)
 
             elif mark != None and mark.startswith('poly'):
                 try:
@@ -267,25 +326,43 @@ def plot_sig(id_slider,
                         plt.axvspan(st, ed-1, alpha=0.5, color='red')
             
             if mark == 'wid':
-                plt.title(id + '(%dbp)' % (size))
+                loc, mtype, nts = id.split('-')
+                size, loc = len(nts), int(loc)
+                st, ed = loc-225/2, loc-225/2+size
+                #mtype = 'A' #temporal
+                if mtype == 'I':
+                    new_id = '%s$_{%d}$[%d^%d]' % (mtype, size, st, ed)
+                else:
+                    if size <= 1:
+                        new_id = '%s$_{%d}$[%d]' % (mtype, size, st)
+                    else:
+                        new_id = '%s$_{%d}$[%d:%d]' % (mtype, size, st, ed-1) 
+                plt.title(new_id, fontsize=8)
+                #plt.title(id + '(%dbp)' % (size))
             else:
-                plt.title(id)
+                plt.title(id, fontsize=8)
 
             if xticks:
                 plt.xticks(xticks[0], xticks[1])
-                plt.tick_params(axis='x', labelsize=8)
                 ax.xaxis.set_minor_locator(tck.AutoMinorLocator(2))
             if yticks:
                 plt.yticks(yticks[0], yticks[1])
+            plt.tick_params(axis='x', labelsize=5)
+            plt.tick_params(axis='y', labelsize=5)
 
-            plt.legend(loc='upper right', frameon=False)
+            leg = plt.legend(loc='upper right', frameon=False, fontsize=5)
+            for lh in leg.legendHandles: 
+                #lh.set_alpha(1)
+                lh.set_linewidth(1.0)
                 
             plt.xlim(xlims)
             plt.ylim(ylims)
             j +=1
 
-        fig.tight_layout()
+        plt.subplots_adjust(wspace=0.25, hspace=0.8)
+        #fig.tight_layout()
         if save == 'pdf':
+            fig.text(4.25/8.5, 0.5/11., str(i+1), ha='center', fontsize=8)
             pdf.savefig(fig)
         elif save == 'png':
             plt.savefig('Signals' + note + '_' + str(i+1) + '.png', dpi=1000)

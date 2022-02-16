@@ -101,17 +101,18 @@ class MarkovModel:
         return score
 
     # Calculate the "single" NCP positioning probability profile of given sequence
-    def single_logprob_profile (self, seq):
+    def single_prob_profile (self, seq, background=False):
         profile = []
-        total = 0.0
         for i in range(len(seq)):
             if i < (self.seq_len / 2) or i > len(seq) - 1 - (self.seq_len / 2):
-                score = 0.0
+                score = -sys.float_info.max
             else:
-                score = self.predict(seq[i - (self.seq_len / 2) : i + (self.seq_len / 2) + 1])
+                score = self.predict(seq[i - (self.seq_len / 2) : i + (self.seq_len / 2) + 1], background)
             profile.append(score)
-            total += score
-        profile = [s / total for s in profile]
+
+        profile = [math.exp(value) for value in profile]
+        total = sum(profile)
+        profile = [float(value)/total for value in profile]
         return profile
 
     # Calculate the sum of weight-factor of given sub sequence (forward)

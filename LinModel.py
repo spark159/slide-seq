@@ -75,6 +75,34 @@ def get_corr(x, y):
         ydiff2 += ydiff * ydiff
     return diffprod / np.sqrt(xdiff2 * ydiff2)
 
+def poly_score (seq, nts='AT', pos=False):
+    num = []
+    num_pos = {}
+    i = 0
+    while i < len(seq):
+        if seq[i] in nts:
+            nt = seq[i]
+            count = 1
+            j = i + 1
+            while j < len(seq):
+                if seq[j] != nt:
+                    break
+                count +=1
+                j +=1
+            num.append(count)
+            if count not in num_pos:
+                num_pos[count] = []
+            num_pos[count].append(i)
+            i = j
+        else:
+            i +=1
+    if pos:
+        return num_pos
+    if len(num) == 0:
+        return 0
+    return max(num)
+
+
 def Amer_len(seq, pos=True):
     num = []
     num_pos = {}
@@ -1642,7 +1670,7 @@ class SeqLinearModel:
             plt.close()
 
 class LinSliderModel:
-    def __init__(self, key_slider, NCPlen=147, templatelen=225, bound=0, shape=False):
+    def __init__(self, key_slider, NCPlen=147, templatelen=225, bound=0, keys=None, shape=False):
         assert NCPlen % 2 != 0
         #self.key_slider = key_slider
         self.NCPlen = NCPlen
@@ -1650,10 +1678,15 @@ class LinSliderModel:
         self.bound = bound
         self.nlogprob_list, self.seq_list, self.pos_list = [], [], []
         self.MGW_list, self.HelT_list, self.ProT_list, self.Roll_list = [], [], [], []
-        self.key_list = sorted(key_slider.keys())
+
+        if keys == None:
+            self.key_list = sorted(key_slider.keys())
+        else:
+            self.key_list = keys
+
         for key in self.key_list:
             slider = key_slider[key]
-            energy_profile = slider.energy_profile()
+            energy_profile = slider.energy_profile(scale=1000)
             #energy_profile = -np.log(slider.dyadmap)
             seq = slider.seq
             for i in range(self.NCPlen/2+bound, self.templatelen-self.NCPlen/2-bound):
@@ -1804,6 +1837,17 @@ class LinSliderModel:
 
         return freq, sample_num, mean, std, stdz_freq
 
+    def _stat_Polylen(self, seq_list, nts):
+        pos_mlen = [0.0 for i in range(self.NCPlen)]
+        for seq in seq_list:
+            len_pos = poly_score(seq, nts=nts, pos=True)
+            for length, pos_list in len_pos.items():
+                for pos in pos_list:
+                    for i in range(pos, pos+length):
+                        pos_mlen[i] += length/float(len(seq_list))
+
+        return pos_mlen
+
     def _stat_PolyA(self, seq_list, bnum):
         seqlen = self.NCPlen / bnum
         assert seqlen >= 1
@@ -1875,6 +1919,7 @@ class LinSliderModel:
                 PolyA_b,
                 GC_b,
                 Harmonic,
+                Polylen=None,
                 scale=100,
                 shape=False,
                 sym=True,
@@ -1935,6 +1980,14 @@ class LinSliderModel:
                 freq[name] = mean2[i]/mean1[i]
         if Harmonic:
             None
+
+        if Polylen:
+            for nts in Polylen:
+                mean1 = self._stat_Polylen(even_samples, nts=nts)
+                mean2 = self._stat_Polylen(bias_samples, nts=nts)
+                name = 'Polylen' + '/'.join(list(nts))
+                fold = [float(mean2[k])/mean1[k] for k in range(len(mean1))]
+                freq[name] = fold
 
             # To do
         self.freq = freq
@@ -2111,7 +2164,7 @@ class LinSliderModel:
                ref_key=None,
                dPolyA=False,
                alpha=0.5,
-               k_fold=5,
+               k_fold=10,
                graph=False):
 
         self.MM_orders, self.Kmer_k_b, = MM_orders, Kmer_k_b
@@ -2154,7 +2207,7 @@ class LinSliderModel:
             if dPolyA:
                 var_list[i] += dPolyA_vars[i]
 
-
+        
         # adjust variables by reference key
         if ref_key:
             new_var_list = []
@@ -2207,6 +2260,9 @@ class LinSliderModel:
         else:
             feature_list = var_list
             target_list = [[value] for value in nlogprob_list]
+        
+        #feature_list = var_list
+        #target_list = [[value] for value in nlogprob_list]
 
         
         # k-fold corss validation
@@ -2418,9 +2474,15 @@ class LinSliderModel:
 
         Ypred = self.reg.predict(var_list)
         Ypred = [ value[0] for value in Ypred]
+        #return Ypred
         pred_prob = [np.exp(-value) for value in Ypred]
-        pred_prob = norm(pred_prob)
+        total = float(sum(pred_prob))
+        pred_prob = [value/total for value in pred_prob]
         return pred_prob
+        pred_nlogprob = [-np.log(value) for value in pred_prob]
+        return pred_nlogprob
+        #pred_prob = [0.0]*(self.NCPlen/2+bound) + pred_prob + [0.0]*(self.NCPlen/2+bound)
+        #return pred_prob
 
     def predict(self, key_slider, scale=2, bound=0):
         keys = random.sample(key_slider.keys(), 30)

@@ -156,7 +156,7 @@ def plot_map(key_slider, sample_list, norm_choice, obs_func, draw = None, slicin
                 A,B,C,D = 4, 8, 0, 2
 
         # temporal for clustering analysis
-        A,B,C,D = 1, 2, 0, 1 #polyA lib
+        #A,B,C,D = 1, 2, 0, 1 #polyA lib
         #A,B,C,D = 2, 4, 0, 2 #mmlib
 
         # temporal for 601 based library
@@ -164,8 +164,8 @@ def plot_map(key_slider, sample_list, norm_choice, obs_func, draw = None, slicin
         #D = 6
 
         # temporal for yeast library
-        #A,B,C,D = 4, 8, 2, 2
-        #D = 6
+        A,B,C,D = 4, 8, 2, 2
+        D = 6
 
         for j in range(len(key_list)):
             key = key_list[j]
