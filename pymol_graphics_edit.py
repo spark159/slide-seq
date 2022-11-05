@@ -455,8 +455,8 @@ if False:
 # for NMF plot
 if True:
     path = "/home/spark159/../../media/spark159/sw/slide_seq_data(2021.07.14)/"
-    fname = 'polyAlib_NMF_size_shl_meanweight2'
-    note = "polyAlib_NMF"
+    fname = 'insertionlib_NMF_size_shl_meanweight2'
+    note = "insertionlib_NMF"
 
     with open(path+fname + ".pickle", "rb") as f:
         size_shl_weight = pickle.load(f)
@@ -480,9 +480,9 @@ if True:
                 size_shl_weight['mean'][shl] = []
             size_shl_weight['mean'][shl].append(np.mean(weights))
 
-    size = 8
+    size = 1
     basis = 3
-    offset = 20
+    offset = 0
     flip = False
     chain_resi_value = {}
     base_pairs = []
@@ -625,7 +625,7 @@ print >> f, ""
 # draw block nucleotides
 #for chain in chain_resi_RGB:
 #    for resi in sorted(chain_resi_RGB[chain].keys()):
-#        if resi < 0:
+3#        if resi < 0:
 #            resi_string = '\\' + str(resi)
 #        else:
 #            resi_string = str(resi)
@@ -770,7 +770,10 @@ code = 'Bowman'
 pdbfname = 'Chd1apo_temp.pdb'
 #code = "6g0l"
 #NA_color_list = ['red', 'green', 'blue']
-NA_color_list = ['white', 'white']
+#NA_color_list = ['white', 'white']
+#NA_color_list = ['black', 'black']
+#NA_color_list = ['deepblue', 'deepblue']
+NA_color_list = ['density', 'density']
 
 # load pdb files
 chain_resi_resn, chain_resi_index_atom, chain_seq, chain_type = read_pdb(pdbfname)
@@ -838,11 +841,15 @@ for chain in protein_chains:
         #print >> f, "set surface_transparency, 0.6889, chain %s" % (chain)
         #print >> f, "show surface, chain %s and resi 377-871" % (chain)
         #print >> f, "set cartoon_color, purple, chain %s" % (chain)
-        print >> f, "set cartoon_color, white, chain %s" % (chain)
+        #print >> f, "set cartoon_color, white, chain %s" % (chain)
         #print >> f, "set cartoon_transparency, 0.1, chain %s" % (chain)
         #print >> f, "show cartoon, chain %s and resi 377-871" % (chain)
-    print >> f, "set surface_proximity, off"
-    print >> f, "set surface_smooth_edges, on"
+        continue
+    print >> f, "set cartoon_color, green, chain %s" % (chain)
+    print >> f, "set cartoon_transparency, 0.3, chain %s" % (chain)
+    print >> f, "show cartoon, chain %s" % (chain)
+    #print >> f, "set surface_proximity, off"
+    #print >> f, "set surface_smooth_edges, on"
     print >> f, ""
 
     
@@ -904,6 +911,7 @@ if False:
         selects = " or ".join(selects)
 
         print >> f, "dssr_block %s, block_depth=1.2, block_color=N %s | edge black"  % (selects, RGB_string)
+        #print >> f, "dssr_block %s, block_depth=1.2, block_color=N gray | edge black"  % (selects)
         #print >> f, "dssr_block %s, block_file=wc" % (selects) 
         #print >> f, "dssr_block %s, block_color=N %s | edge black" % (selects, RGB_string)
         #print >> f, "dssr_block %s, block_color=wc %s | edge black" % (selects, RGB_string)
@@ -950,7 +958,8 @@ if True:
         select = "(chain %s and resi %s)" % (chain, resi_string) 
         selects.append(select)
     selects = " or ".join(selects)
-    print >> f, "dssr_block %s, block_depth=1.3, block_color=N white | edge black"  % (selects)
+    #print >> f, "dssr_block %s, block_depth=1.3, block_color=N white | edge black"  % (selects)
+    print >> f, "dssr_block %s, block_depth=1.3, block_color=N [0.77 0.77 0.77] | edge black"  % (selects)
 
     # fill valid data with defined colormap
     for base_pair in base_pairs:
@@ -969,7 +978,9 @@ if True:
             selects.append(select)
         selects = " or ".join(selects)
 
-        print >> f, "dssr_block %s, block_depth=1.3, block_color=N %s | edge black"  % (selects, RGB_string)
+        #print >> f, "dssr_block %s, block_depth=1.3, block_color=N %s | edge black"  % (selects, RGB_string)
+        print >> f, "dssr_block %s, block_depth=1.3, block_color=N [0.77 0.77 0.77] | edge black"  % (selects)
+        #print >> f, "dssr_block %s, block_depth=1.3, block_color=N white | edge black"  % (selects)
 
     
 
@@ -1073,12 +1084,20 @@ print >> f, ""
 #   159.175933838,  159.393310547,  157.676727295,\
 #   253.623901367,  443.240203857,   20.000000000 )"
 
+#s = "set_view (\
+#     0.682291329,    0.003466655,   -0.731069088,\
+#     0.399848610,   -0.838933587,    0.369194180,\
+#    -0.612043440,   -0.544217706,   -0.573783457,\
+#    -0.001077712,    0.001657039, -348.277862549,\
+#   165.365158081,  170.411621094,  156.720397949,\
+#   253.623901367,  443.240203857,   20.000000000 )"
+
 s = "set_view (\
-     0.682291329,    0.003466655,   -0.731069088,\
-     0.399848610,   -0.838933587,    0.369194180,\
-    -0.612043440,   -0.544217706,   -0.573783457,\
-    -0.001077712,    0.001657039, -348.277862549,\
-   165.365158081,  170.411621094,  156.720397949,\
+     0.671171546,    0.063488662,   -0.738575995,\
+     0.255896538,   -0.954918563,    0.150458679,\
+    -0.695731640,   -0.289983302,   -0.657160223,\
+    -0.000061989,    0.002155930, -348.055267334,\
+   155.531921387,  160.811904907,  162.158294678,\
    253.623901367,  443.240203857,   20.000000000 )"
 
 print >> f, s

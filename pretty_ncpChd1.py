@@ -420,11 +420,22 @@ def spectrum(chain_resi_value,
     return chain_resi_RGB
 
 # set parameters
-code = "6wz5"
+code = "7tn2"
 note = 'pretty'
 #NA_color_list = ['red', 'green', 'blue']
-#NA_color_list = ['white', 'white']
-NA_color_list = ['red', 'blue']
+NA_color_list = ['white', 'white']
+#NA_color_list = ['red', 'blue']
+
+domain_range = {'chromo':[174, 342],
+                'lobe1':[377, 592],
+                'lobe2':[606, 871],
+                'DBD':[1006, 1266]}
+
+domain_color = {'chromo':'yellow',
+                'lobe1':'red',
+                'lobe2':'blue',
+                'DBD':'purple'}
+
 
 # load pdb files
 chain_resi_resn, chain_resi_index_atom, chain_seq, chain_type = read_pdb(code+".pdb")
@@ -450,13 +461,34 @@ print >> f, "fetch %s" % (code)
 print >> f, "hide all"
 print >> f, ""
 
-# draw proteins
-print >> f, "create protein, chain " + "+".join(protein_chains)
-#print >> f, "set cartoon_color, purpleblue, protein"
-print >> f, "set cartoon_color, green, protein"
-#print >> f, "set cartoon_transparency, 0.6889, protein"
-print >> f, "show cartoon, protein"
-print >> f, ""
+for chain in protein_chains:
+    if chain == 'W':
+        #print >> f, "set cartoon_color, purpleblue, chain %s" % (chain)
+        for domain, pos_range in domain_range.items():
+            st, ed = pos_range
+            color = domain_color[domain]
+            print >> f, "set cartoon_color, %s, chain %s and resi %d-%d" % (color, chain, st, ed)
+        print >> f, "show cartoon, chain %s" % (chain)
+    else:
+        print >> f, "set cartoon_color, green, chain %s" % (chain)
+        #print >> f, "set cartoon_color, white, chain %s" % (chain)
+        print >> f, "set cartoon_transparency, 0.3, chain %s" % (chain)
+    #print >> f, "set cartoon_transparency, 0.6889, protein"
+    #print >> f, "set cartoon_transparency, 0.6, chain %s" % (chain)
+    #print >> f, "set cartoon_transparency, 0.6889, chain %s" % (chain)
+    #print >> f, "set cartoon_transparency, 0.3, chain %s" % (chain)
+    print >> f, "show cartoon, chain %s" % (chain)
+    print >> f, ""
+
+print >> f, "set cartoon_cylindrical_helices, 1"
+
+## draw proteins
+#print >> f, "create protein, chain " + "+".join(protein_chains)
+##print >> f, "set cartoon_color, purpleblue, protein"
+#print >> f, "set cartoon_color, green, protein"
+##print >> f, "set cartoon_transparency, 0.6889, protein"
+#print >> f, "show cartoon, protein"
+#print >> f, ""
     
 
 # draw nucleic acid backbones
@@ -485,7 +517,7 @@ print >> f, "set cartoon_nucleic_acid_mode, 1"
 print >> f, ""    
 
 # setup background and other details
-print >> f, "set cartoon_highlight_color, grey50"
+#print >> f, "set cartoon_highlight_color, grey50"
 print >> f, "bg_color white"
 print >> f, "remove solvent"
 print >> f, "hide everything, hydro"
@@ -504,51 +536,44 @@ print >> f, ""
 
 print >> f, "set ray_shadow, off"
 print >> f, "set orthoscopic, 1"
-print >> f, "set field_of_view, 100"
+#print >> f, "set field_of_view, 100"
 print >> f, ""
 
 print >> f, "set antialias, 5"
 print >> f, "set valence, 0"
 print >> f, ""
 
-print >> f, "set ambient, 0.68"
-print >> f, "set reflect, 0"
-print >> f, "set direct, 0.6"
-print >> f, "set spec_direct, 0"
-print >> f, "set light_count, 1"
+#print >> f, "set ambient, 0.68"
+#print >> f, "set reflect, 0"
+#print >> f, "set direct, 0.6"
+#print >> f, "set spec_direct, 0"
+#print >> f, "set light_count, 1"
 print >> f, ""
 
 # set view
 #s = "set_view (\
-#     0.453073144,   -0.543207288,   -0.706860304,\
-#     0.239336461,   -0.689684033,    0.683412969,\
-#    -0.858743787,   -0.478813827,   -0.182467759,\
-#     0.000000000,    0.000000000, -328.645324707,\
-#   253.987380981,  254.949859619,  250.117034912,\
-#   259.106475830,  398.184173584,   20.000000000 )"
-#s = "set_view (\
-#    -0.025952408,    0.064559340,   -0.997576714,\
-#     0.999659657,    0.003919386,   -0.025753763,\
-#     0.002248094,   -0.997904837,   -0.064639933,\
-#    -0.000098632,    0.000247881, -328.648193359,\
-#   254.074493408,  254.713195801,  248.911682129,\
-#   259.106475830,  398.184173584,   20.000000000 )"
+#     0.428835958,    0.154327199,   -0.890103638,\
+#     0.273262590,   -0.961301744,   -0.035018325,\
+#    -0.861061871,   -0.228214487,   -0.454413682,\
+#    -0.000181794,   -0.000003576, -445.301422119,\
+#   170.725372314,  151.746185303,  149.257263184,\
+#   328.841766357,  561.758361816,   20.000000000 )"
 
 #s = "set_view (\
-#    -0.025952408,    0.064559340,   -0.997576714,\
-#     0.999659657,    0.003919386,   -0.025753763,\
-#     0.002248094,   -0.997904837,   -0.064639933,\
-#    -0.000098632,    0.000247881, -328.648193359,\
-#   254.074493408,  254.713195801,  248.911682129,\
-#   293.682861328,  363.607788086,   20.000000000 )"
+#     0.576073289,    0.134317920,   -0.806287467,\
+#     0.304966867,   -0.950498760,    0.059550259,\
+#    -0.758376122,   -0.280196011,   -0.588520825,\
+#    -0.000181794,   -0.000003576, -445.301422119,\
+#   170.725372314,  151.746185303,  149.257263184,\
+#   328.841766357,  561.758361816,   20.000000000 )"
 
 s = "set_view (\
-     0.019103866,    0.068592593,   -0.997462094,\
-     0.999724388,   -0.014691438,    0.018136160,\
-    -0.013409444,   -0.997532904,   -0.068855278,\
-    -0.000098632,    0.000247881,  -49.578060150,\
-   254.074493408,  254.713195801,  248.911682129,\
-    22.490093231,   76.660217285,  100.000000000 )"
+     0.583599985,    0.096502498,   -0.806287467,\
+     0.242395803,   -0.968347251,    0.059550259,\
+    -0.775018811,   -0.230194047,   -0.588520825,\
+    -0.000181794,   -0.000003576, -445.301422119,\
+   170.725372314,  151.746185303,  149.257263184,\
+   328.841766357,  561.758361816,   20.000000000 )"
 
 print >> f, s
 

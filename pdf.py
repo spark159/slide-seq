@@ -27,13 +27,13 @@ def key_cmp(k1,k2):
 ref_length = 225
 dyad_axis = ref_length/2
 dyad_offset = 52
-#filenames1 = ["../../Illumina/plusoneHS/data/Plslib-HS_S1_L001_R.sort"]
-#filenames2 = ["../../Illumina/plusoneHS/data/Plslib-HS-30min_S2_L001_R.sort"]
-#ref_fname = "../../Illumina/plusoneHS/plusonelib.ref"
+filenames1 = ["Plslib-HS_S1_L001_R.sort"]
+filenames2 = ["Plslib-HS-30min_S2_L001_R.sort"]
+ref_fname = "plusonelib.ref"
 
-filenames2 = ["../../Illumina/temp/plusone-0_S1_L001_R.sort"]
-filenames1 = ["../../Illumina/temp/plusone-30_S2_L001_R.sort"]
-ref_fname = "../../Illumina/temp/plusonelib.ref"
+#filenames2 = ["../../Illumina/temp/plusone-0_S1_L001_R.sort"]
+#filenames1 = ["../../Illumina/temp/plusone-30_S2_L001_R.sort"]
+#ref_fname = "../../Illumina/temp/plusonelib.ref"
 
 
 key_slider1 = load.load_files(filenames1, ref_length, dyad_axis, dyad_offset, filter_num = 50, fill=None, load_ref=ref_fname)

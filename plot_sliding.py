@@ -34,10 +34,12 @@ def read_data (fname_list):
     return sample_rep_values, sample_times
 
 path = ""
-fname_list = ["0N80_NCP_sliding_1AP.csv", 
-              "0N80_NCP_sliding_A1.csv", 
-              "0N80_NCP_sliding_A2.csv", 
-              "0N80_NCP_sliding_Ainsert.csv"]
+#fname_list = ["0N80_NCP_sliding_1AP.csv", 
+#              "0N80_NCP_sliding_A1.csv", 
+#              "0N80_NCP_sliding_A2.csv", 
+#              "0N80_NCP_sliding_Ainsert.csv"]
+
+fname_list = ["New_80N0_native_sliding.csv"]
 
 sample_rep_values, sample_times = read_data([path + fname for fname in fname_list])
 maxtime = np.max(sample_times.values())
@@ -51,9 +53,12 @@ maxtime = np.max(sample_times.values())
 #names = ['601 0N80', 'A1LI typeI 0N80', 'A1LI typeII 0N80', 'A1RI typeI 0N80', 'A1RI typeII 0N80']
 #names = ['601 0N80', 'Top 1dU 0N80', 'Bott 1dU 0N80', 'Top 2dU 0N80', 'Bott 2dU 0N80', 'Top 1AP 0N80', 'Bott 1AP 0N80', 'Top 2AP 0N80', 'Bott 2AP 0N80']
 #names = ['601 0N80', 'Top 1dU 0N80', 'Bott 1dU 0N80', 'Top 2dU 0N80', 'Bott 2dU 0N80', 'Top 1AP 0N80', 'Bott 1AP 0N80', 'Top 2AP 0N80', 'Bott 2AP 0N80']
-sample_names = ['601 0N80', 'A1R 0N80', 'A1RM 0N80', 'A2R 0N80', 'A2RM 0N80', 'A1RI typeI 0N80', 'A1RI typeII 0N80']
-figure_names = ['WT 601', '1bp dA:dT', '2bp dA:dT', '1bp mismatch', '2bp mismatch', 'A-insertion(guide)', 'A-insertion(tracking)']
+#sample_names = ['601 0N80', 'A1R 0N80', 'A1RM 0N80', 'A2R 0N80', 'A2RM 0N80', 'A1RI typeI 0N80', 'A1RI typeII 0N80']
+#figure_names = ['WT 601', '1bp dA:dT', '2bp dA:dT', '1bp mismatch', '2bp mismatch', 'A-insertion(guide)', 'A-insertion(tracking)']
 #colors = ['k', 'r', 'g', 'b', 'orange', 'm', 'y', 'cyan', 'steelblue']
+
+sample_names = ['601 80N0', '2bp mm SHL2', '2bp mm SHL2.7', '1AP SHL2', '1AP SHL2.7']
+figure_names = ['WT 601', '2bp mismatch SHL2 ', '2bp mismatch SHL2.7', '1AP SHL2', '1AP SHL2.7']
 
 colors = ['k', 'tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan']
 
@@ -95,7 +100,8 @@ leg = plt.legend()
 for lh in leg.legendHandles:
     lh.set_alpha(1)
 #plt.savefig("0N80_Sliding.png", bbox_inches='tight')
-plt.savefig("0N80_Sliding_log.png", bbox_inches='tight')
+#plt.savefig("0N80_Sliding_log.png", bbox_inches='tight')
+plt.savefig("New_80N0_Sliding_log.png", bbox_inches='tight')
 plt.show()
 plt.close()
 
@@ -136,8 +142,8 @@ for name in sample_names:
 #plt.close()
 
 fig = plt.figure()
-k_means[-1] = 0
-k_stds[-1] = 0 
+#k_means[-1] = 0
+#k_stds[-1] = 0 
 plt.bar(range(len(k_means)), k_means, yerr=k_stds, color=colors, width=0.5)
 plt.title("0N80 Sliding")
 plt.yscale("log")
@@ -150,8 +156,8 @@ plt.close()
 
 
 fig = plt.figure()
-t_means[-1] = 0
-t_stds[-1] = 0
+#t_means[-1] = 0
+#t_stds[-1] = 0
 plt.bar(range(len(t_means)), t_means, width=0.5, yerr=t_stds, color=colors)
 plt.title("0N80 Sliding")
 plt.yscale("log")
