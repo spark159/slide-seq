@@ -454,9 +454,13 @@ if False:
 
 # for NMF plot
 if True:
-    path = "/home/spark159/../../media/spark159/sw/slide_seq_data(2021.07.14)/"
-    fname = 'insertionlib_NMF_size_shl_meanweight2'
-    note = "insertionlib_NMF"
+    #path = "/home/spark159/../../media/spark159/sw/slide_seq_data(2021.07.14)/"
+    #fname = 'insertionlib_NMF_size_shl_meanweight2'
+    #note = "insertionlib_NMF"
+
+    path = ""
+    fname = "Park97mmlib_NMF_size_shl_meanweight1"
+    note = "Park97mmlib_NMF"
 
     with open(path+fname + ".pickle", "rb") as f:
         size_shl_weight = pickle.load(f)
@@ -480,8 +484,8 @@ if True:
                 size_shl_weight['mean'][shl] = []
             size_shl_weight['mean'][shl].append(np.mean(weights))
 
-    size = 1
-    basis = 3
+    size = 2
+    basis = 0
     offset = 0
     flip = False
     chain_resi_value = {}
