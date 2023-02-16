@@ -76,7 +76,7 @@ def plot_map(id_slider,       # dictionary of id:Slider
              figscale=100,    # set the figure size len(data)/figscale (inches)
              figsize=None,    # set figure size [height, width] (inches)
              fontsize=6,      # set xick label font size
-             *args):
+             **kwarg):
 
     if len(ids) <= 0:
         ids = sorted(id_slider.keys(), cmp=analysis.wid_cmp_len)
@@ -113,7 +113,7 @@ def plot_map(id_slider,       # dictionary of id:Slider
         for j in range(len(ids)):
             id = ids[j]
             slider = id_slider[id]
-            obs_sig = obs_funcs[i](slider, *args)
+            obs_sig = obs_funcs[i](slider, **kwarg)
             obs_sig = obs_sig[slicing:len(obs_sig)-slicing]
 
             if norm:
@@ -136,7 +136,7 @@ def plot_map(id_slider,       # dictionary of id:Slider
         for j in range(len(ids)):
             id = ids[j]
             slider = id_slider[id]
-            obs_sig = obs_funcs[0](slider, *args)
+            obs_sig = obs_funcs[0](slider, **kwargs)
             mark_sig = np.zeros(len(obs_sig))
             mark_sig[:] = np.nan
 
@@ -239,7 +239,7 @@ def plot_sig(id_slider,
              frame_color='k',
              note="",
              save=False,
-             *args):
+             **kwarg):
 
     if len(ids) <= 0:
         ids = sorted(id_slider.keys(), cmp=analysis.wid_cmp_len)
@@ -270,7 +270,8 @@ def plot_sig(id_slider,
         if page_nums > 1:
             save = 'pdf'
         else:
-            save = 'png'
+            #save = 'png'
+            save = 'svg'
     
     if save == 'pdf':
         pdf = matplotlib.backends.backend_pdf.PdfPages('Signals' + note + ".pdf")
@@ -291,7 +292,7 @@ def plot_sig(id_slider,
             ax.spines['right'].set_color(frame_color)
 
             for obs_func, color, alpha, label in zip(obs_funcs, colors, alphas, labels):
-                sig = obs_func(slider, *args)
+                sig = obs_func(slider, **kwarg)
                 if norm:
                     sig = analysis.normalize_list(sig)
                 plt.plot(sig, color=color, alpha=alpha, label=label, lw=1)
@@ -364,8 +365,10 @@ def plot_sig(id_slider,
         if save == 'pdf':
             fig.text(4.25/8.5, 0.5/11., str(i+1), ha='center', fontsize=8)
             pdf.savefig(fig)
-        elif save == 'png':
-            plt.savefig('Signals' + note + '_' + str(i+1) + '.png', dpi=1000)
+        #elif save == 'png':
+        elif save == 'svg':
+            #plt.savefig('Signals' + note + '_' + str(i+1) + '.png', dpi=1000)
+            plt.savefig('Signals' + note + '_' + str(i+1) + '.svg', format='svg')
         else:
             plt.show()
         plt.close()

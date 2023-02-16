@@ -257,3 +257,4 @@ class Slider:
             force = - denergy / dX
             force_profile.append(force)
         return np.asarray(force_profile)
+        
