@@ -15,10 +15,8 @@ graph LR;
 
     Read1("Read1.fastq"):::file
     Read2("Read2.fastq"):::file
-
     RefFile("ReferenceFile.ref"):::file
 
-    CombinedRead("CombinedRead.fastq"):::file
     SortedRead("SortedRead.sort"):::file
 
     FLASh("FLASh"):::script
@@ -31,7 +29,7 @@ graph LR;
     Bowtie2 --- sort_script
     sort_script --> SortedRead
 
-    DataFile("DataFile.sort"):::file
+    DataFile("DataFile.data"):::file
     makedata_script("make_data.py"):::script
     imputation_script("imputation.py"):::script
 
@@ -47,10 +45,10 @@ The following is a list of custom Python scripts used for Slide-seq analysis, lo
 <details>
 <summary> sort.py </summary>
 
-Binning reference genome and get aligned read counts for each bin
+Sort the reads in the FASTQ files based on the reference sequences and identify the cleavage locations.
 
   ```
-  python bincount.py AlignedReads.bam -x ref_genome -w bin_size -o out_fname
+  python sort.py Read1.fastq Read2.fastq ReferenceFile.ref -o out_fname
   ```
 
 </details>
@@ -59,10 +57,10 @@ Binning reference genome and get aligned read counts for each bin
 <details>
 <summary> make_data.py </summary>
 
-Reading SAM/BAM files to get read coverage along reference genome.
+Map the cleavage locations onto the top and bottom strands of the DNA template, and impute missing data to infer nucleosome dyad positions.
 
   ```
-  python coverage.py AlignedReads.bam -x ref_genome --chr chromosome -o out_fname --skip
+  python make_data.py SortedRead.sort -x ReferenceFile.ref --fill linear -o out_fname
   ```
 
 </details>
@@ -76,4 +74,6 @@ All raw FASTQ files and processed data from the publication [2-3] have been depo
 
 ## Reference
 
-[1] https://www.biorxiv.org/content/10.1101/2023.12.08.570828v1
+[1] https://doi.org/10.1016/S0076-6879(03)75013-7
+[2] https://doi.org/10.1101/2022.04.19.488687
+[3] https://doi.org/10.1093/nar/gkad738
