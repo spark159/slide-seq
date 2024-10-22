@@ -70,10 +70,10 @@ Map the cleavage locations onto the top and bottom strands of the DNA template, 
 Further analysis and graph generation are documented in IPython notebooks, which can be found in the *ipython_notebooks* folder
 
 ## Data deposition
-All raw FASTQ files and processed data from the publication [2-3] have been deposited in NCBI GEO under accession number GSE252941.
+All raw FASTQ files and processed data from the publication [2-3] have been deposited in NCBI GEO database with accession number GSE198440.
 
 ## Reference
 
-[1] https://doi.org/10.1016/S0076-6879(03)75013-7
-[2] https://doi.org/10.1101/2022.04.19.488687
-[3] https://doi.org/10.1093/nar/gkad738
+[1] https://doi.org/10.1016/S0076-6879(03)75013-7 \n
+[2] https://doi.org/10.1101/2022.04.19.488687 \n
+[3] https://doi.org/10.1093/nar/gkad738 \n
