@@ -6,7 +6,7 @@ Slide-seq is a high-throughput technique for mapping nucleosome positions on the
 
 
 ## Analysis workflow
-This is a summary of the workflow for Condense-seq analysis, from the FASTQ file processing to condensability score computation.
+This is a summary of the workflow for Slide-seq analysis, from the FASTQ file processing to nucleosome positioning inference.
 
 ```mermaid
 graph LR;
