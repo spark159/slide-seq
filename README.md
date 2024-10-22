@@ -4,6 +4,8 @@
 
 Slide-seq is a high-throughput technique for mapping nucleosome positions on the DNA template with base-pair resolution. This method builds on and extends the previously developed histone-contact mapping technique using a photo-crosslinker [1]. Briefly, the histone (H2BS53C) is site-specifically labeled with a photo-crosslinker (azido phenacyl bromide), which crosslinks and cleaves the nucleosomal DNA exactly 53 base pairs from the nucleosome dyad. Using Next-Generation Sequencing (NGS), the cleavage sites across all DNA sequences are identified, allowing the inference of nucleosome positions on the DNA template. With this technique, we investigated the effects of DNA sequences and base-pairing defects on Chd1 chromatin remodeling [2-3].
 
+![Screenshot 2024-10-21 at 9 15 41 PM](https://github.com/user-attachments/assets/4f67b19c-5015-493f-90b3-c173d4854dbf)
+
 
 ## Analysis workflow
 This is a summary of the workflow for Slide-seq analysis, from the FASTQ file processing to nucleosome positioning inference.
