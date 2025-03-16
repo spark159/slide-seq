@@ -79,3 +79,5 @@ All raw FASTQ files and processed data from the publication [2-3] have been depo
 [1] https://doi.org/10.1016/S0076-6879(03)75013-7 <br/>
 [2] https://doi.org/10.1101/2022.04.19.488687 <br/>
 [3] https://doi.org/10.1093/nar/gkad738 <br/>
+
+[![DOI](https://zenodo.org/badge/115638961.svg)](https://doi.org/10.5281/zenodo.15036181)
